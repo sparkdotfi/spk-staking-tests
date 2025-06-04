@@ -306,7 +306,10 @@ contract SymbioticVaultTest is Test {
         uint256 newLimit = 1000000 * 1e18; // 1M SPK limit
         
         // Only Spark Governance should be able to set deposit limit
-        vm.expectRevert(); // Should revert when called by non-admin
+        bytes32 depositLimitSetRole = keccak256("DEPOSIT_LIMIT_SET_ROLE");
+        vm.expectRevert(
+            abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", alice, depositLimitSetRole)
+        );
         vm.prank(alice);
         vault.setDepositLimit(newLimit);
         
@@ -324,7 +327,10 @@ contract SymbioticVaultTest is Test {
     
     function test_AdminCanSetDepositWhitelist() public {
         // Only admin should be able to enable whitelist
-        vm.expectRevert(); // Should revert when called by non-admin
+        bytes32 depositWhitelistSetRole = keccak256("DEPOSIT_WHITELIST_SET_ROLE");
+        vm.expectRevert(
+            abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", alice, depositWhitelistSetRole)
+        );
         vm.prank(alice);
         vault.setDepositWhitelist(true);
         
@@ -345,16 +351,28 @@ contract SymbioticVaultTest is Test {
         // Test that regular users cannot call admin functions
         vm.startPrank(alice);
         
-        vm.expectRevert();
+        bytes32 depositLimitSetRole = keccak256("DEPOSIT_LIMIT_SET_ROLE");
+        vm.expectRevert(
+            abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", alice, depositLimitSetRole)
+        );
         vault.setDepositLimit(1000 * 1e18);
         
-        vm.expectRevert();
+        bytes32 isDepositLimitSetRole = keccak256("IS_DEPOSIT_LIMIT_SET_ROLE");
+        vm.expectRevert(
+            abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", alice, isDepositLimitSetRole)
+        );
         vault.setIsDepositLimit(true);
         
-        vm.expectRevert();
+        bytes32 depositWhitelistSetRole = keccak256("DEPOSIT_WHITELIST_SET_ROLE");
+        vm.expectRevert(
+            abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", alice, depositWhitelistSetRole)
+        );
         vault.setDepositWhitelist(true);
         
-        vm.expectRevert();
+        bytes32 depositorWhitelistRole = keccak256("DEPOSITOR_WHITELIST_ROLE");
+        vm.expectRevert(
+            abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", alice, depositorWhitelistRole)
+        );
         vault.setDepositorWhitelistStatus(bob, true);
         
         vm.stopPrank();
@@ -373,7 +391,9 @@ contract SymbioticVaultTest is Test {
     
     function test_BurnerRouterOwnership() public {
         // Test that Spark Governance is the owner of the burner router
-        vm.expectRevert(); // Should revert when called by non-owner
+        vm.expectRevert(
+            abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", alice)
+        );
         vm.prank(alice);
         burnerRouter.setGlobalReceiver(alice);
     }
@@ -384,7 +404,9 @@ contract SymbioticVaultTest is Test {
         assertEq(initialDelay, BURNER_DELAY, "Initial delay should be 31 days");
         
         // Test that non-owner cannot change delay
-        vm.expectRevert(); // Should revert when called by non-owner
+        vm.expectRevert(
+            abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", alice)
+        );
         vm.prank(alice);
         burnerRouter.setDelay(15 days);
         
@@ -403,7 +425,8 @@ contract SymbioticVaultTest is Test {
         assertEq(burnerRouter.delay(), initialDelay, "Delay should still be old value while pending");
         
         // Try to accept delay change immediately (should fail - not ready yet)
-        vm.expectRevert(); // Should revert as delay period hasn't passed
+        // This will likely revert with a timing-related error message
+        vm.expectRevert(); // Keeping this generic as the exact error might vary
         burnerRouter.acceptDelay();
         
         // Fast forward past the delay period (initial delay + 1)
@@ -479,12 +502,13 @@ contract SymbioticVaultTest is Test {
     // ============ ERROR CONDITION TESTS ============
     
     function test_DepositWithInsufficientBalance() public {
-        uint256 depositAmount = spkToken.balanceOf(alice) + 1; // More than Alice has
+        uint256 aliceBalance = spkToken.balanceOf(alice);
+        uint256 depositAmount = aliceBalance + 1; // More than Alice has
         
         vm.startPrank(alice);
         spkToken.approve(VAULT_ADDRESS, depositAmount);
         
-        vm.expectRevert(); // Should revert due to insufficient balance
+        vm.expectRevert("SDAO/insufficient-balance");
         vault.deposit(alice, depositAmount);
         
         vm.stopPrank();
@@ -499,7 +523,7 @@ contract SymbioticVaultTest is Test {
         
         // Try to withdraw more than deposited
         uint256 withdrawAmount = depositAmount + 1;
-        vm.expectRevert(); // Should revert
+        vm.expectRevert("TooMuchWithdraw()");
         vault.withdraw(alice, withdrawAmount);
         
         vm.stopPrank();
@@ -516,7 +540,7 @@ contract SymbioticVaultTest is Test {
         vault.withdraw(alice, 500 * 1e18);
         
         // Try to claim immediately (should fail)
-        vm.expectRevert(); // Should revert as epoch hasn't passed
+        vm.expectRevert("InvalidEpoch()");
         vault.claim(alice, currentEpoch + 1);
         
         vm.stopPrank();
