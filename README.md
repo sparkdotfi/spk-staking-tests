@@ -17,26 +17,18 @@ The test suite verifies the functionality of the Spark Protocol's Symbiotic vaul
 - **SPK Token**: `0xc20059e0317DE91738d13af027DfC4a50781b066`
 - **Spark Governance**: `0x3300f198988e4C9C63F75dF86De36421f06af8c4`
 - **Burner Router**: `0xe244C36C8D6831829590c05F49bBb98B11965efb`
+- **Veto Slasher**: `0xef4fa9b4529a9e983b18f223a284025f24d2f18b` 
 
 ## Features Tested
 
-### User Functionality
-- ✅ **Deposits**: Users can deposit SPK tokens and receive sSPK shares
-- ✅ **Withdrawals**: Users can initiate withdrawals (burns sSPK, creates withdrawal claim)
-- ✅ **Claims**: Users can claim SPK after the 2-week epoch delay
-- ✅ **Batch Claims**: Users can claim multiple epochs in a single transaction
-
-### Admin Functionality
-- ✅ **Role Verification**: Spark Governance has all required admin roles
-- ✅ **Deposit Limits**: Admin can set and enable deposit limits
-- ✅ **Deposit Whitelist**: Admin can enable whitelist and manage depositor permissions
-- ✅ **Access Control**: Non-admin users are properly blocked from admin functions
-
-### Integration Tests
-- ✅ **Full Lifecycle**: Complete deposit → withdraw → wait → claim cycle
-- ✅ **Epoch Management**: Proper epoch transitions and timing
-- ✅ **Burner Router**: Configuration and ownership verification
-- ✅ **Error Handling**: Proper reverts for invalid operations
+- ✅ **User Operations**: Deposits, withdrawals, claims, share transfers
+- ✅ **Admin Functions**: Role verification, deposit limits, whitelists, pause/unpause
+- ✅ **Security**: Access control, slashing protection, token drainage protection
+- ✅ **Slashing Mechanism**: Authorized slashing, fund flows, veto windows, proportional impact
+- ✅ **Symbiotic Integration**: Network/operator onboarding with real mainnet contracts
+- ✅ **Edge Cases**: Zero amounts, insufficient balance, invalid parameters, boundary conditions
+- ✅ **Governance Protection**: Burner delays, veto periods, unstaking protection
+- ✅ **Math & Accounting**: Share calculations, epoch tracking, balance reconciliation
 
 ## Setup
 
@@ -67,34 +59,6 @@ The test suite verifies the functionality of the Spark Protocol's Symbiotic vaul
    forge test --gas-report
    ```
 
-## Test Categories
-
-### Basic Vault Tests
-- `test_VaultInitialization()`: Verifies vault configuration matches deployment
-- `test_AdminRoles()`: Confirms Spark Governance has all required permissions
-
-### Deposit Tests
-- `test_UserDeposit()`: Single user deposit functionality
-- `test_MultipleUserDeposits()`: Multiple users depositing simultaneously
-
-### Withdrawal Tests
-- `test_UserWithdrawal()`: Withdrawal initiation and share burning
-- `test_ClaimAfterEpochDelay()`: Claiming after 2-week epoch delay
-- `test_ClaimBatch()`: Batch claiming across multiple epochs
-
-### Admin Tests
-- `test_AdminCanSetDepositLimit()`: Admin deposit limit management
-- `test_AdminCanSetDepositWhitelist()`: Admin whitelist management
-- `test_NonAdminCannotCallAdminFunctions()`: Access control verification
-
-### Integration Tests
-- `test_FullDepositWithdrawClaimCycle()`: Complete user journey
-- `test_VaultStakeAndSlashableBalance()`: Staking mechanism verification
-
-### Error Condition Tests
-- `test_DepositWithInsufficientBalance()`: Insufficient balance handling
-- `test_WithdrawMoreThanBalance()`: Over-withdrawal protection
-- `test_ClaimBeforeEpochDelay()`: Premature claim prevention
 
 ## Key Constants
 
