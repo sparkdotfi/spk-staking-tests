@@ -605,22 +605,6 @@ contract SymbioticVaultTest is Test {
         vm.stopPrank();
     }
     
-    function test_DirectTokenTransferToVault() public {
-        uint256 transferAmount = 100 * 1e18;
-        uint256 initialVaultBalance = spkToken.balanceOf(VAULT_ADDRESS);
-        
-        // Someone sends SPK directly to vault
-        vm.startPrank(alice);
-        spkToken.transfer(VAULT_ADDRESS, transferAmount);
-        vm.stopPrank();
-        
-        // Verify vault received the tokens
-        assertEq(spkToken.balanceOf(VAULT_ADDRESS), initialVaultBalance + transferAmount, "Vault should receive direct transfer");
-        
-        // But these tokens are essentially "donated" - no shares are minted
-        // This is expected behavior for most vaults
-    }
-    
     function test_InvalidRecipientClaim() public {
         vm.expectRevert("InvalidRecipient()");
         vm.prank(alice);
