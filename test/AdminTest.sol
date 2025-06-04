@@ -132,7 +132,11 @@ contract AdminTest is BaseTest {
     }
     
     function test_BurnerRouterOwnership() public {
-        // Test that Spark Governance is the owner of the burner router
+        // Test that Spark Governance is the actual owner of the burner router
+        address owner = OwnableUpgradeable(address(burnerRouter)).owner();
+        assertEq(owner, SPARK_GOVERNANCE, "Spark Governance should be the owner of burner router");
+        
+        // Test that non-owner cannot call owner functions
         vm.expectRevert(
             abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", alice)
         );
@@ -167,8 +171,7 @@ contract AdminTest is BaseTest {
         assertEq(burnerRouter.delay(), initialDelay, "Delay should still be old value while pending");
         
         // Try to accept delay change immediately (should fail - not ready yet)
-        // This will likely revert with a timing-related error message
-        vm.expectRevert(); // Keeping this generic as the exact error might vary
+        vm.expectRevert("NotReady()");
         burnerRouter.acceptDelay();
         
         // Fast forward past the delay period (initial delay + 1)
