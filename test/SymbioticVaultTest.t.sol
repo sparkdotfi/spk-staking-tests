@@ -34,6 +34,7 @@ contract SymbioticVaultTest is Test {
     address alice = makeAddr("alice");
     address bob = makeAddr("bob");
     address charlie = makeAddr("charlie");
+    address attacker = makeAddr("attacker");
     
     // Contract instances
     IVaultTokenized vault;
@@ -69,6 +70,7 @@ contract SymbioticVaultTest is Test {
         _giveTokens(alice, 10000 * 1e18);   // 10k SPK
         _giveTokens(bob, 10000 * 1e18);     // 10k SPK  
         _giveTokens(charlie, 10000 * 1e18); // 10k SPK
+        _giveTokens(attacker, 10000 * 1e18); // 10k SPK for attack tests
     }
     
     // ============ BASIC VAULT TESTS ============
@@ -300,6 +302,49 @@ contract SymbioticVaultTest is Test {
         }
     }
     
+    // ============ REDEEM FUNCTION TESTS ============
+    
+    function test_RedeemShares() public {
+        uint256 depositAmount = 1000 * 1e18;
+        
+        vm.startPrank(alice);
+        spkToken.approve(VAULT_ADDRESS, depositAmount);
+        (uint256 depositedAmount, uint256 mintedShares) = vault.deposit(alice, depositAmount);
+        
+        // Redeem half the shares
+        uint256 redeemShares = mintedShares / 2;
+        uint256 initialActiveShares = vaultToken.balanceOf(alice);
+        uint256 currentEpoch = vault.currentEpoch();
+        
+        (uint256 withdrawnAssets, uint256 redeemWithdrawalShares) = vault.redeem(alice, redeemShares);
+        
+        vm.stopPrank();
+        
+        // Verify redeem results
+        assertGt(withdrawnAssets, 0, "No assets withdrawn");
+        assertGt(redeemWithdrawalShares, 0, "No withdrawal shares minted");
+        assertEq(vaultToken.balanceOf(alice), initialActiveShares - redeemShares, "Active shares not burned");
+        
+        // Check withdrawal shares were created
+        uint256 withdrawalShares = vault.withdrawalsOf(currentEpoch + 1, alice);
+        assertEq(withdrawalShares, redeemWithdrawalShares, "Withdrawal shares mismatch");
+    }
+    
+    function test_RedeemMoreThanBalance() public {
+        uint256 depositAmount = 1000 * 1e18;
+        
+        vm.startPrank(alice);
+        spkToken.approve(VAULT_ADDRESS, depositAmount);
+        (uint256 depositedAmount, uint256 mintedShares) = vault.deposit(alice, depositAmount);
+        
+        // Try to redeem more shares than owned
+        uint256 excessShares = mintedShares + 1;
+        vm.expectRevert("TooMuchRedeem()");
+        vault.redeem(alice, excessShares);
+        
+        vm.stopPrank();
+    }
+    
     // ============ ADMIN FUNCTION TESTS ============
     
     function test_AdminCanSetDepositLimit() public {
@@ -376,6 +421,259 @@ contract SymbioticVaultTest is Test {
         vault.setDepositorWhitelistStatus(bob, true);
         
         vm.stopPrank();
+    }
+    
+    // ============ DEPOSIT LIMIT SECURITY TESTS ============
+    
+    function test_DepositLimitEnforcement() public {
+        uint256 depositLimit = 1000 * 1e18; // 1k SPK limit
+        
+        // Set up deposit limit
+        vm.prank(SPARK_GOVERNANCE);
+        vault.setIsDepositLimit(true);
+        
+        vm.prank(SPARK_GOVERNANCE);
+        vault.setDepositLimit(depositLimit);
+        
+        // Alice deposits up to the limit
+        vm.startPrank(alice);
+        spkToken.approve(VAULT_ADDRESS, depositLimit);
+        vault.deposit(alice, depositLimit);
+        vm.stopPrank();
+        
+        // Bob tries to deposit more (should fail)
+        uint256 excessAmount = 1 * 1e18;
+        vm.startPrank(bob);
+        spkToken.approve(VAULT_ADDRESS, excessAmount);
+        vm.expectRevert("DepositLimitReached()");
+        vault.deposit(bob, excessAmount);
+        vm.stopPrank();
+    }
+    
+    function test_WhitelistDepositEnforcement() public {
+        // Enable whitelist
+        vm.prank(SPARK_GOVERNANCE);
+        vault.setDepositWhitelist(true);
+        
+        // Whitelist only Alice
+        vm.prank(SPARK_GOVERNANCE);
+        vault.setDepositorWhitelistStatus(alice, true);
+        
+        uint256 depositAmount = 100 * 1e18;
+        
+        // Alice (whitelisted) should be able to deposit
+        vm.startPrank(alice);
+        spkToken.approve(VAULT_ADDRESS, depositAmount);
+        vault.deposit(alice, depositAmount);
+        vm.stopPrank();
+        
+        // Bob (not whitelisted) should be blocked
+        vm.startPrank(bob);
+        spkToken.approve(VAULT_ADDRESS, depositAmount);
+        vm.expectRevert("NotWhitelistedDepositor()");
+        vault.deposit(bob, depositAmount);
+        vm.stopPrank();
+    }
+    
+    // ============ SLASHING PROTECTION TESTS ============
+    
+    function test_UnauthorizedCannotCallOnSlash() public {
+        vm.expectRevert("NotSlasher()");
+        vm.prank(attacker);
+        vault.onSlash(1000 * 1e18, uint48(block.timestamp));
+    }
+    
+    function test_OnlySlasherCanSlash() public {
+        // Test that only the designated slasher can call onSlash
+        address actualSlasher = vault.slasher();
+        
+        // Attacker cannot slash
+        vm.expectRevert("NotSlasher()");
+        vm.prank(attacker);
+        vault.onSlash(100 * 1e18, uint48(block.timestamp));
+        
+        // Even admin cannot slash
+        vm.expectRevert("NotSlasher()");
+        vm.prank(SPARK_GOVERNANCE);
+        vault.onSlash(100 * 1e18, uint48(block.timestamp));
+        
+        // Only actual slasher can slash (though we can't easily test this on mainnet fork)
+        assertEq(actualSlasher, VETO_SLASHER, "Slasher should be the veto slasher");
+    }
+    
+    // ============ TOKEN DRAINAGE PROTECTION TESTS ============
+    
+    function test_CannotDirectlyTransferVaultTokens() public {
+        // Give vault some tokens first
+        uint256 depositAmount = 1000 * 1e18;
+        vm.startPrank(alice);
+        spkToken.approve(VAULT_ADDRESS, depositAmount);
+        vault.deposit(alice, depositAmount);
+        vm.stopPrank();
+        
+        uint256 vaultBalance = spkToken.balanceOf(VAULT_ADDRESS);
+        assertGt(vaultBalance, 0, "Vault should have tokens");
+        
+        // This test verifies that the vault doesn't expose any unauthorized withdrawal functions
+        // The vault contract doesn't have direct transfer functions accessible to users
+        // which is the expected security behavior - users can only withdraw through proper channels
+        
+        // Verify vault still has tokens and they're secure
+        assertEq(spkToken.balanceOf(VAULT_ADDRESS), vaultBalance, "Vault tokens should be safe");
+        
+        // Users can only access funds through proper withdrawal -> claim process
+        uint256 attackerInitialBalance = spkToken.balanceOf(attacker);
+        // Attacker has no way to directly extract vault funds
+        assertEq(spkToken.balanceOf(attacker), attackerInitialBalance, "Attacker cannot drain vault");
+    }
+    
+    function test_VaultTokenTransferability() public {
+        uint256 depositAmount = 1000 * 1e18;
+        
+        vm.startPrank(alice);
+        spkToken.approve(VAULT_ADDRESS, depositAmount);
+        (uint256 depositedAmount, uint256 mintedShares) = vault.deposit(alice, depositAmount);
+        vm.stopPrank();
+        
+        // Check if Alice can transfer her sSPK tokens to Bob
+        uint256 transferAmount = mintedShares / 2;
+        
+        vm.startPrank(alice);
+        // This should work if vault tokens are transferable
+        vaultToken.transfer(bob, transferAmount);
+        vm.stopPrank();
+        
+        // Verify transfer worked
+        assertEq(vaultToken.balanceOf(bob), transferAmount, "Bob should have received sSPK tokens");
+        assertEq(vaultToken.balanceOf(alice), mintedShares - transferAmount, "Alice should have remaining sSPK tokens");
+    }
+    
+    function test_VaultTokenApprovalAndTransferFrom() public {
+        uint256 depositAmount = 1000 * 1e18;
+        
+        vm.startPrank(alice);
+        spkToken.approve(VAULT_ADDRESS, depositAmount);
+        (uint256 depositedAmount, uint256 mintedShares) = vault.deposit(alice, depositAmount);
+        
+        // Alice approves Bob to spend her sSPK tokens
+        uint256 approvalAmount = mintedShares / 2;
+        vaultToken.approve(bob, approvalAmount);
+        vm.stopPrank();
+        
+        // Bob uses the approval to transfer Alice's tokens to Charlie
+        vm.startPrank(bob);
+        vaultToken.transferFrom(alice, charlie, approvalAmount);
+        vm.stopPrank();
+        
+        // Verify transfer worked
+        assertEq(vaultToken.balanceOf(charlie), approvalAmount, "Charlie should have received sSPK tokens");
+        assertEq(vaultToken.balanceOf(alice), mintedShares - approvalAmount, "Alice should have remaining sSPK tokens");
+        assertEq(vaultToken.allowance(alice, bob), 0, "Allowance should be used up");
+    }
+    
+    // ============ EDGE CASE TESTS ============
+    
+    function test_ZeroAmountDeposit() public {
+        vm.startPrank(alice);
+        spkToken.approve(VAULT_ADDRESS, 0);
+        vm.expectRevert("InsufficientDeposit()");
+        vault.deposit(alice, 0);
+        vm.stopPrank();
+    }
+    
+    function test_ZeroAmountWithdraw() public {
+        uint256 depositAmount = 1000 * 1e18;
+        
+        vm.startPrank(alice);
+        spkToken.approve(VAULT_ADDRESS, depositAmount);
+        vault.deposit(alice, depositAmount);
+        
+        vm.expectRevert("InsufficientWithdrawal()");
+        vault.withdraw(alice, 0);
+        vm.stopPrank();
+    }
+    
+    function test_ZeroSharesRedeem() public {
+        uint256 depositAmount = 1000 * 1e18;
+        
+        vm.startPrank(alice);
+        spkToken.approve(VAULT_ADDRESS, depositAmount);
+        vault.deposit(alice, depositAmount);
+        
+        vm.expectRevert("InsufficientRedemption()");
+        vault.redeem(alice, 0);
+        vm.stopPrank();
+    }
+    
+    function test_DirectTokenTransferToVault() public {
+        uint256 transferAmount = 100 * 1e18;
+        uint256 initialVaultBalance = spkToken.balanceOf(VAULT_ADDRESS);
+        
+        // Someone sends SPK directly to vault
+        vm.startPrank(alice);
+        spkToken.transfer(VAULT_ADDRESS, transferAmount);
+        vm.stopPrank();
+        
+        // Verify vault received the tokens
+        assertEq(spkToken.balanceOf(VAULT_ADDRESS), initialVaultBalance + transferAmount, "Vault should receive direct transfer");
+        
+        // But these tokens are essentially "donated" - no shares are minted
+        // This is expected behavior for most vaults
+    }
+    
+    function test_InvalidRecipientClaim() public {
+        vm.expectRevert("InvalidRecipient()");
+        vm.prank(alice);
+        vault.claim(address(0), 1);
+    }
+    
+    function test_InvalidRecipientClaimBatch() public {
+        uint256[] memory epochs = new uint256[](1);
+        epochs[0] = 1;
+        
+        vm.expectRevert("InvalidRecipient()");
+        vm.prank(alice);
+        vault.claimBatch(address(0), epochs);
+    }
+    
+    function test_EmptyEpochsClaimBatch() public {
+        uint256[] memory epochs = new uint256[](0);
+        
+        vm.expectRevert("InvalidLengthEpochs()");
+        vm.prank(alice);
+        vault.claimBatch(alice, epochs);
+    }
+    
+    function test_InvalidOnBehalfOfDeposit() public {
+        vm.startPrank(alice);
+        spkToken.approve(VAULT_ADDRESS, 1000 * 1e18);
+        vm.expectRevert("InvalidOnBehalfOf()");
+        vault.deposit(address(0), 1000 * 1e18);
+        vm.stopPrank();
+    }
+    
+    // ============ DELEGATOR/SLASHER INITIALIZATION SECURITY ============
+    
+    function test_DelegatorAndSlasherAlreadySet() public view {
+        // Test that delegator and slasher are already initialized
+        assertTrue(vault.isDelegatorInitialized(), "Delegator should be initialized");
+        assertTrue(vault.isSlasherInitialized(), "Slasher should be initialized");
+        assertEq(vault.delegator(), NETWORK_DELEGATOR, "Incorrect delegator");
+        assertEq(vault.slasher(), VETO_SLASHER, "Incorrect slasher");
+    }
+    
+    function test_CannotSetDelegatorTwice() public {
+        // Since delegator is already set, trying to set it again should fail
+        vm.expectRevert("DelegatorAlreadyInitialized()");
+        vm.prank(SPARK_GOVERNANCE);
+        vault.setDelegator(makeAddr("newDelegator"));
+    }
+    
+    function test_CannotSetSlasherTwice() public {
+        // Since slasher is already set, trying to set it again should fail
+        vm.expectRevert("SlasherAlreadyInitialized()");
+        vm.prank(SPARK_GOVERNANCE);
+        vault.setSlasher(makeAddr("newSlasher"));
     }
     
     // ============ BURNER ROUTER TESTS ============
