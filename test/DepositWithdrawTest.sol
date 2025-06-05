@@ -209,18 +209,33 @@ contract DepositWithdrawTest is BaseTest {
         uint256 initialActiveShares = vaultToken.balanceOf(alice);
         uint256 currentEpoch = vault.currentEpoch();
         
+        // Calculate expected assets based on current share price
+        // Using totalStake() (total assets) and totalSupply() (total shares)
+        uint256 totalAssets = vault.totalStake();
+        uint256 totalShares = vaultToken.totalSupply();
+        uint256 expectedAssets = (redeemShares * totalAssets) / totalShares;
+        
         (uint256 withdrawnAssets, uint256 redeemWithdrawalShares) = vault.redeem(alice, redeemShares);
         
         vm.stopPrank();
         
-        // Verify redeem results
+        // Verify redeem results with proper mathematical validation
         assertGt(withdrawnAssets, 0, "No assets withdrawn");
         assertGt(redeemWithdrawalShares, 0, "No withdrawal shares minted");
-        assertEq(vaultToken.balanceOf(alice), initialActiveShares - redeemShares, "Active shares not burned");
         
-        // Check withdrawal shares were created
+        // Validate mathematical correctness of redemption
+        assertEq(withdrawnAssets, expectedAssets, "Incorrect asset amount for redeemed shares");
+        
+        // Verify active shares were burned correctly
+        assertEq(vaultToken.balanceOf(alice), initialActiveShares - redeemShares, "Active shares not burned correctly");
+        
+        // Check withdrawal shares were created correctly
         uint256 withdrawalShares = vault.withdrawalsOf(currentEpoch + 1, alice);
         assertEq(withdrawalShares, redeemWithdrawalShares, "Withdrawal shares mismatch");
+        
+        // Additional validation: withdrawal shares should represent the same value as withdrawn assets
+        // In a 1:1 scenario, withdrawal shares should equal the asset amount withdrawn
+        assertEq(redeemWithdrawalShares, withdrawnAssets, "Withdrawal shares should equal withdrawn assets");
     }
     
     function test_RedeemMoreThanBalance() public {

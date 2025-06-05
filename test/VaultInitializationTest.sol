@@ -79,23 +79,50 @@ contract VaultInitializationTest is BaseTest {
         // Initialize epoch system first
         _initializeEpochSystem();
         
+        // Record initial epoch state with precise values
+        uint256 initialTimestamp = block.timestamp;
         uint256 currentEpoch = vault.currentEpoch();
         uint256 currentEpochStart = vault.currentEpochStart();
         uint256 nextEpochStart = vault.nextEpochStart();
         
-        // Test epoch progression by advancing time
-        vm.warp(nextEpochStart + 1);
-        uint256 newCurrentEpoch = vault.currentEpoch();
+        // Verify precise epoch timing relationships
+        assertEq(nextEpochStart, currentEpochStart + EPOCH_DURATION, "Next epoch start should be exactly one EPOCH_DURATION after current");
+        assertTrue(currentEpochStart <= initialTimestamp, "Current epoch start should not be in the future");
+        assertTrue(nextEpochStart > initialTimestamp, "Next epoch start should be in the future");
         
-        // Now we should be able to call previousEpochStart
+        // Verify epoch calculation precision
+        uint256 expectedCurrentEpoch = (initialTimestamp - currentEpochStart) / EPOCH_DURATION;
+        assertEq(currentEpoch, expectedCurrentEpoch, "Current epoch should match calculated epoch");
+        
+        // Test epoch progression by advancing time to exactly the next epoch start
+        vm.warp(nextEpochStart);
+        uint256 newCurrentEpoch = vault.currentEpoch();
+        uint256 newCurrentEpochStart = vault.currentEpochStart();
+        uint256 newNextEpochStart = vault.nextEpochStart();
+        
+        // Verify precise epoch advancement
+        assertEq(newCurrentEpoch, currentEpoch + 1, "Epoch should advance by exactly 1");
+        assertEq(newCurrentEpochStart, nextEpochStart, "New current epoch start should equal previous next epoch start");
+        assertEq(newNextEpochStart, nextEpochStart + EPOCH_DURATION, "New next epoch start should be exactly one EPOCH_DURATION later");
+        
+        // Test previousEpochStart function with precise validation
         if (newCurrentEpoch > 0) {
             uint256 previousEpochStart = vault.previousEpochStart();
-            assertEq(currentEpochStart, previousEpochStart, "Previous epoch start should equal old current epoch start");
+            assertEq(previousEpochStart, currentEpochStart, "Previous epoch start should equal old current epoch start");
+            assertEq(previousEpochStart, newCurrentEpochStart - EPOCH_DURATION, "Previous epoch start should be exactly one EPOCH_DURATION before current");
         }
         
-        // Basic sanity checks
-        assertGt(newCurrentEpoch, currentEpoch, "Epoch should have advanced");
-        uint256 newCurrentEpochStart = vault.currentEpochStart();
-        assertEq(newCurrentEpochStart, nextEpochStart, "New current epoch start should equal old next epoch start");
+        // Verify epoch duration consistency
+        uint256 actualEpochDuration = newCurrentEpochStart - currentEpochStart;
+        assertEq(actualEpochDuration, EPOCH_DURATION, "Actual epoch duration should exactly match EPOCH_DURATION constant");
+        
+        // Test edge case: advance time within the epoch and verify epoch doesn't change
+        uint256 partialEpochTime = newNextEpochStart - 1; // 1 second before next epoch
+        vm.warp(partialEpochTime);
+        uint256 sameEpoch = vault.currentEpoch();
+        uint256 sameEpochStart = vault.currentEpochStart();
+        
+        assertEq(sameEpoch, newCurrentEpoch, "Epoch should not change when advancing within same epoch");
+        assertEq(sameEpochStart, newCurrentEpochStart, "Epoch start should not change when advancing within same epoch");
     }
 } 
