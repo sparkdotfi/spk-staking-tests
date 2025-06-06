@@ -14,6 +14,8 @@ import "../lib/core/src/interfaces/vault/IVaultTokenized.sol";
 import "../lib/core/src/interfaces/vault/IVault.sol";
 import "../lib/burners/src/interfaces/router/IBurnerRouter.sol";
 
+interface IStakedSPK is IERC20Metadata, IVaultTokenized, IAccessControl {}
+
 abstract contract BaseTest is Test {
 
     /**********************************************************************************************/
@@ -25,7 +27,7 @@ abstract contract BaseTest is Test {
     address constant NETWORK_DELEGATOR = 0x20ba8C54B62F1F4653289DCdf316d68199158Fb6;
     address constant SPARK_GOVERNANCE  = 0x3300f198988e4C9C63F75dF86De36421f06af8c4;
     address constant SPK               = 0xc20059e0317DE91738d13af027DfC4a50781b066;
-    address constant VAULT_ADDRESS     = 0x0542206DAD09b1b58f29155b4317F9Bf92CD2701;
+    address constant STAKED_SPK_VAULT  = 0x0542206DAD09b1b58f29155b4317F9Bf92CD2701;
     address constant VETO_SLASHER      = 0xeF4fa9b4529A9e983B18F223A284025f24d2F18B;
 
     // Constants from deployment
@@ -42,10 +44,8 @@ abstract contract BaseTest is Test {
     // Contract instances
     IAccessControl  vaultAccess;
     IBurnerRouter   burnerRouter;
-    IERC20          spkToken;
-    IERC20          vaultToken; // For accessing ERC20 functions
-    IERC20Metadata  spkTokenMeta;
-    IVaultTokenized vault;
+    IERC20Metadata  spk;
+    IStakedSPK      sSpk; // For accessing ERC20 functions
 
     // ============ SETUP ============
 
@@ -58,11 +58,9 @@ abstract contract BaseTest is Test {
 
         // Initialize contract instances
         burnerRouter = IBurnerRouter(BURNER_ROUTER);
-        spkToken     = IERC20(SPK);
-        spkTokenMeta = IERC20Metadata(SPK);
-        vault        = IVaultTokenized(VAULT_ADDRESS);
-        vaultAccess  = IAccessControl(VAULT_ADDRESS);
-        vaultToken   = IERC20(VAULT_ADDRESS); // For accessing ERC20 functions
+
+        spk  = IERC20Metadata(SPK);
+        sSpk = IStakedSPK(STAKED_SPK_VAULT);
 
         // Setup test users with SPK tokens
         _setupTestUsers();
@@ -89,8 +87,8 @@ abstract contract BaseTest is Test {
         _giveTokens(initialDepositor, 1 * 1e18); // 1 SPK
 
         vm.startPrank(initialDepositor);
-        spkToken.approve(VAULT_ADDRESS, 1 * 1e18);
-        vault.deposit(initialDepositor, 1 * 1e18);
+        spk.approve(address(sSpk), 1 * 1e18);
+        sSpk.deposit(initialDepositor, 1 * 1e18);
         vm.stopPrank();
     }
 
@@ -103,7 +101,7 @@ abstract contract BaseTest is Test {
         address whale = 0xBE8E3e3618f7474F8cB1d074A26afFef007E98FB; // 6.5 billion SPK whale
 
         vm.startPrank(whale);
-        spkToken.transfer(to, amount);
+        spk.transfer(to, amount);
         vm.stopPrank();
     }
 

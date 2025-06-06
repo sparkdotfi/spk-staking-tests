@@ -14,18 +14,18 @@ contract AdminTest is BaseTest {
             abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", alice, depositLimitSetRole)
         );
         vm.prank(alice);
-        vault.setDepositLimit(newLimit);
+        sSpk.setDepositLimit(newLimit);
 
         // Should succeed when called by Spark Governance
         vm.prank(SPARK_GOVERNANCE);
-        vault.setIsDepositLimit(true);
+        sSpk.setIsDepositLimit(true);
 
         vm.prank(SPARK_GOVERNANCE);
-        vault.setDepositLimit(newLimit);
+        sSpk.setDepositLimit(newLimit);
 
         // Verify the limit was set
-        assertTrue(vault.isDepositLimit(), "Deposit limit not enabled");
-        assertEq(vault.depositLimit(), newLimit, "Deposit limit not set correctly");
+        assertTrue(sSpk.isDepositLimit(), "Deposit limit not enabled");
+        assertEq(sSpk.depositLimit(), newLimit, "Deposit limit not set correctly");
     }
 
     function test_AdminCanSetDepositWhitelist() public {
@@ -35,19 +35,19 @@ contract AdminTest is BaseTest {
             abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", alice, depositWhitelistSetRole)
         );
         vm.prank(alice);
-        vault.setDepositWhitelist(true);
+        sSpk.setDepositWhitelist(true);
 
         // Should succeed when called by Spark Governance
         vm.prank(SPARK_GOVERNANCE);
-        vault.setDepositWhitelist(true);
+        sSpk.setDepositWhitelist(true);
 
-        assertTrue(vault.depositWhitelist(), "Deposit whitelist not enabled");
+        assertTrue(sSpk.depositWhitelist(), "Deposit whitelist not enabled");
 
         // Test whitelisting a user
         vm.prank(SPARK_GOVERNANCE);
-        vault.setDepositorWhitelistStatus(alice, true);
+        sSpk.setDepositorWhitelistStatus(alice, true);
 
-        assertTrue(vault.isDepositorWhitelisted(alice), "Alice not whitelisted");
+        assertTrue(sSpk.isDepositorWhitelisted(alice), "Alice not whitelisted");
     }
 
     function test_NonAdminCannotCallAdminFunctions() public {
@@ -58,25 +58,25 @@ contract AdminTest is BaseTest {
         vm.expectRevert(
             abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", alice, depositLimitSetRole)
         );
-        vault.setDepositLimit(1000 * 1e18);
+        sSpk.setDepositLimit(1000 * 1e18);
 
         bytes32 isDepositLimitSetRole = keccak256("IS_DEPOSIT_LIMIT_SET_ROLE");
         vm.expectRevert(
             abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", alice, isDepositLimitSetRole)
         );
-        vault.setIsDepositLimit(true);
+        sSpk.setIsDepositLimit(true);
 
         bytes32 depositWhitelistSetRole = keccak256("DEPOSIT_WHITELIST_SET_ROLE");
         vm.expectRevert(
             abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", alice, depositWhitelistSetRole)
         );
-        vault.setDepositWhitelist(true);
+        sSpk.setDepositWhitelist(true);
 
         bytes32 depositorWhitelistRole = keccak256("DEPOSITOR_WHITELIST_ROLE");
         vm.expectRevert(
             abi.encodeWithSignature("AccessControlUnauthorizedAccount(address,bytes32)", alice, depositorWhitelistRole)
         );
-        vault.setDepositorWhitelistStatus(bob, true);
+        sSpk.setDepositorWhitelistStatus(bob, true);
 
         vm.stopPrank();
     }
@@ -86,48 +86,48 @@ contract AdminTest is BaseTest {
 
         // Set up deposit limit
         vm.prank(SPARK_GOVERNANCE);
-        vault.setIsDepositLimit(true);
+        sSpk.setIsDepositLimit(true);
 
         vm.prank(SPARK_GOVERNANCE);
-        vault.setDepositLimit(depositLimit);
+        sSpk.setDepositLimit(depositLimit);
 
         // Alice deposits up to the limit
         vm.startPrank(alice);
-        spkToken.approve(VAULT_ADDRESS, depositLimit);
-        vault.deposit(alice, depositLimit);
+        spk.approve(address(sSpk), depositLimit);
+        sSpk.deposit(alice, depositLimit);
         vm.stopPrank();
 
         // Bob tries to deposit more (should fail)
         uint256 excessAmount = 1 * 1e18;
         vm.startPrank(bob);
-        spkToken.approve(VAULT_ADDRESS, excessAmount);
+        spk.approve(address(sSpk), excessAmount);
         vm.expectRevert("DepositLimitReached()");
-        vault.deposit(bob, excessAmount);
+        sSpk.deposit(bob, excessAmount);
         vm.stopPrank();
     }
 
     function test_WhitelistDepositEnforcement() public {
         // Enable whitelist
         vm.prank(SPARK_GOVERNANCE);
-        vault.setDepositWhitelist(true);
+        sSpk.setDepositWhitelist(true);
 
         // Whitelist only Alice
         vm.prank(SPARK_GOVERNANCE);
-        vault.setDepositorWhitelistStatus(alice, true);
+        sSpk.setDepositorWhitelistStatus(alice, true);
 
         uint256 depositAmount = 100 * 1e18;
 
         // Alice (whitelisted) should be able to deposit
         vm.startPrank(alice);
-        spkToken.approve(VAULT_ADDRESS, depositAmount);
-        vault.deposit(alice, depositAmount);
+        spk.approve(address(sSpk), depositAmount);
+        sSpk.deposit(alice, depositAmount);
         vm.stopPrank();
 
         // Bob (not whitelisted) should be blocked
         vm.startPrank(bob);
-        spkToken.approve(VAULT_ADDRESS, depositAmount);
+        spk.approve(address(sSpk), depositAmount);
         vm.expectRevert("NotWhitelistedDepositor()");
-        vault.deposit(bob, depositAmount);
+        sSpk.deposit(bob, depositAmount);
         vm.stopPrank();
     }
 

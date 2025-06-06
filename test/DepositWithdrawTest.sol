@@ -11,13 +11,13 @@ contract DepositWithdrawTest is BaseTest {
         vm.startPrank(alice);
 
         // Check initial balances
-        uint256 initialSPKBalance  = spkToken.balanceOf(alice);
-        uint256 initialSSPKBalance = vaultToken.balanceOf(alice);
-        uint256 initialTotalSupply = vaultToken.totalSupply();
+        uint256 initialSPKBalance  = spk.balanceOf(alice);
+        uint256 initialSSPKBalance = sSpk.balanceOf(alice);
+        uint256 initialTotalSupply = sSpk.totalSupply();
 
         // Approve and deposit
-        spkToken.approve(VAULT_ADDRESS, depositAmount);
-        (uint256 depositedAmount, uint256 mintedShares) = vault.deposit(alice, depositAmount);
+        spk.approve(address(sSpk), depositAmount);
+        (uint256 depositedAmount, uint256 mintedShares) = sSpk.deposit(alice, depositAmount);
 
         vm.stopPrank();
 
@@ -26,9 +26,9 @@ contract DepositWithdrawTest is BaseTest {
         assertGt(mintedShares, 0, "No shares minted");
 
         // Check balances after deposit
-        assertEq(spkToken.balanceOf(alice),   initialSPKBalance  - depositAmount, "SPK not transferred");
-        assertEq(vaultToken.balanceOf(alice), initialSSPKBalance + mintedShares,  "sSPK not minted");
-        assertEq(vaultToken.totalSupply(),    initialTotalSupply + mintedShares,  "Total supply not updated");
+        assertEq(spk.balanceOf(alice),   initialSPKBalance  - depositAmount, "SPK not transferred");
+        assertEq(sSpk.balanceOf(alice), initialSSPKBalance + mintedShares,  "sSPK not minted");
+        assertEq(sSpk.totalSupply(),    initialTotalSupply + mintedShares,  "Total supply not updated");
     }
 
     function test_MultipleUserDeposits() public {
@@ -36,47 +36,47 @@ contract DepositWithdrawTest is BaseTest {
 
         // Alice deposits
         vm.startPrank(alice);
-        spkToken.approve(VAULT_ADDRESS, depositAmount);
-        (uint256 aliceDeposited, uint256 aliceShares) = vault.deposit(alice, depositAmount);
+        spk.approve(address(sSpk), depositAmount);
+        (uint256 aliceDeposited, uint256 aliceShares) = sSpk.deposit(alice, depositAmount);
         vm.stopPrank();
 
         // Bob deposits
         vm.startPrank(bob);
-        spkToken.approve(VAULT_ADDRESS, depositAmount);
-        (uint256 bobDeposited, uint256 bobShares) = vault.deposit(bob, depositAmount);
+        spk.approve(address(sSpk), depositAmount);
+        (uint256 bobDeposited, uint256 bobShares) = sSpk.deposit(bob, depositAmount);
         vm.stopPrank();
 
         // Verify both deposits
         assertEq(aliceDeposited, depositAmount, "Alice deposit amount incorrect");
         assertEq(bobDeposited, depositAmount, "Bob deposit amount incorrect");
-        assertEq(vaultToken.balanceOf(alice), aliceShares, "Alice shares incorrect");
-        assertEq(vaultToken.balanceOf(bob), bobShares, "Bob shares incorrect");
+        assertEq(sSpk.balanceOf(alice), aliceShares, "Alice shares incorrect");
+        assertEq(sSpk.balanceOf(bob), bobShares, "Bob shares incorrect");
     }
 
     function test_UserWithdrawal() public {
         // First deposit
         uint256 depositAmount = 1000 * 1e18;
         vm.startPrank(alice);
-        spkToken.approve(VAULT_ADDRESS, depositAmount);
-        vault.deposit(alice, depositAmount);
+        spk.approve(address(sSpk), depositAmount);
+        sSpk.deposit(alice, depositAmount);
 
         // Record initial state
-        uint256 initialShares = vaultToken.balanceOf(alice);
+        uint256 initialShares = sSpk.balanceOf(alice);
         uint256 withdrawAmount = 500 * 1e18; // Withdraw half
 
         // Initiate withdrawal
-        (uint256 burnedShares, uint256 mintedWithdrawalShares) = vault.withdraw(alice, withdrawAmount);
+        (uint256 burnedShares, uint256 mintedWithdrawalShares) = sSpk.withdraw(alice, withdrawAmount);
 
         vm.stopPrank();
 
         // Verify withdrawal initiation
         assertGt(burnedShares, 0, "No shares burned");
         assertGt(mintedWithdrawalShares, 0, "No withdrawal shares minted");
-        assertEq(vaultToken.balanceOf(alice), initialShares - burnedShares, "Active shares not burned");
+        assertEq(sSpk.balanceOf(alice), initialShares - burnedShares, "Active shares not burned");
 
         // Check withdrawal shares
-        uint256 currentEpoch = vault.currentEpoch();
-        uint256 withdrawalShares = vault.withdrawalsOf(currentEpoch + 1, alice);
+        uint256 currentEpoch = sSpk.currentEpoch();
+        uint256 withdrawalShares = sSpk.withdrawalsOf(currentEpoch + 1, alice);
         assertEq(withdrawalShares, mintedWithdrawalShares, "Withdrawal shares mismatch");
     }
 
@@ -89,13 +89,13 @@ contract DepositWithdrawTest is BaseTest {
         uint256 withdrawAmount = 1000 * 1e18;
 
         vm.startPrank(alice);
-        spkToken.approve(VAULT_ADDRESS, depositAmount);
-        vault.deposit(alice, depositAmount);
+        spk.approve(address(sSpk), depositAmount);
+        sSpk.deposit(alice, depositAmount);
 
-        uint256 currentEpoch = vault.currentEpoch();
-        uint256 currentEpochStart = vault.currentEpochStart();
+        uint256 currentEpoch = sSpk.currentEpoch();
+        uint256 currentEpochStart = sSpk.currentEpochStart();
 
-        vault.withdraw(alice, withdrawAmount);
+        sSpk.withdraw(alice, withdrawAmount);
         vm.stopPrank();
 
         // Calculate when we can claim: current epoch start + 2 full epochs
@@ -106,24 +106,24 @@ contract DepositWithdrawTest is BaseTest {
         vm.warp(claimableTime + 1); // +1 to be sure we're past the boundary
 
         // Check what epoch we're in now
-        uint256 newCurrentEpoch = vault.currentEpoch();
+        uint256 newCurrentEpoch = sSpk.currentEpoch();
 
         // Record state before claim
-        uint256 aliceBalanceBefore = spkToken.balanceOf(alice);
+        uint256 aliceBalanceBefore = spk.balanceOf(alice);
         uint256 withdrawalEpoch = currentEpoch + 1;
-        uint256 withdrawalShares = vault.withdrawalsOf(withdrawalEpoch, alice);
+        uint256 withdrawalShares = sSpk.withdrawalsOf(withdrawalEpoch, alice);
 
         // Only proceed if we have withdrawal shares
         if (withdrawalShares > 0) {
             // Claim withdrawal - wrap in try/catch to see if there's a revert
             vm.prank(alice);
-            try vault.claim(alice, withdrawalEpoch) returns (uint256 claimedAmount) {
+            try sSpk.claim(alice, withdrawalEpoch) returns (uint256 claimedAmount) {
                 // Verify claim
                 assertGt(claimedAmount, 0, "Nothing claimed");
-                assertEq(spkToken.balanceOf(alice), aliceBalanceBefore + claimedAmount, "SPK not received");
+                assertEq(spk.balanceOf(alice), aliceBalanceBefore + claimedAmount, "SPK not received");
 
                 // Check if withdrawal was actually cleared
-                uint256 remainingShares = vault.withdrawalsOf(withdrawalEpoch, alice);
+                uint256 remainingShares = sSpk.withdrawalsOf(withdrawalEpoch, alice);
                 if (remainingShares != 0) {
                     // Note: Withdrawal shares not cleared - this might be expected behavior
                 }
@@ -137,7 +137,7 @@ contract DepositWithdrawTest is BaseTest {
         } else {
             // Check other epochs
             for (uint256 i = 1; i <= newCurrentEpoch + 1; i++) {
-                uint256 shares = vault.withdrawalsOf(i, alice);
+                uint256 shares = sSpk.withdrawalsOf(i, alice);
                 if (shares > 0) {
                     // Found withdrawal shares in a different epoch
                 }
@@ -154,17 +154,17 @@ contract DepositWithdrawTest is BaseTest {
         uint256 withdrawAmount = 500 * 1e18;
 
         vm.startPrank(alice);
-        spkToken.approve(VAULT_ADDRESS, depositAmount);
-        vault.deposit(alice, depositAmount);
+        spk.approve(address(sSpk), depositAmount);
+        sSpk.deposit(alice, depositAmount);
 
         uint256[] memory withdrawalEpochs = new uint256[](3);
-        uint256 firstEpochStart = vault.currentEpochStart();
+        uint256 firstEpochStart = sSpk.currentEpochStart();
 
         // Make withdrawals in different epochs
         for (uint256 i = 0; i < 3; i++) {
-            uint256 currentEpoch = vault.currentEpoch();
+            uint256 currentEpoch = sSpk.currentEpoch();
             withdrawalEpochs[i] = currentEpoch + 1;
-            vault.withdraw(alice, withdrawAmount);
+            sSpk.withdraw(alice, withdrawAmount);
 
             // Advance to next epoch
             vm.warp(block.timestamp + EPOCH_DURATION);
@@ -182,17 +182,17 @@ contract DepositWithdrawTest is BaseTest {
         vm.warp(allClaimableTime + 1);
 
         // Batch claim
-        uint256 aliceBalanceBefore = spkToken.balanceOf(alice);
+        uint256 aliceBalanceBefore = spk.balanceOf(alice);
         vm.prank(alice);
-        uint256 totalClaimed = vault.claimBatch(alice, withdrawalEpochs);
+        uint256 totalClaimed = sSpk.claimBatch(alice, withdrawalEpochs);
 
         // Verify batch claim
         assertGt(totalClaimed, 0, "Nothing claimed in batch");
-        assertEq(spkToken.balanceOf(alice), aliceBalanceBefore + totalClaimed, "SPK not received from batch claim");
+        assertEq(spk.balanceOf(alice), aliceBalanceBefore + totalClaimed, "SPK not received from batch claim");
 
         // Check withdrawals - Note: shares may remain, but claims work correctly
         for (uint256 i = 0; i < withdrawalEpochs.length; i++) {
-            uint256 remainingShares = vault.withdrawalsOf(withdrawalEpochs[i], alice);
+            uint256 remainingShares = sSpk.withdrawalsOf(withdrawalEpochs[i], alice);
             // Note: remainingShares may be > 0, this appears to be expected behavior
         }
     }
@@ -201,21 +201,21 @@ contract DepositWithdrawTest is BaseTest {
         uint256 depositAmount = 1000 * 1e18;
 
         vm.startPrank(alice);
-        spkToken.approve(VAULT_ADDRESS, depositAmount);
-        (uint256 depositedAmount, uint256 mintedShares) = vault.deposit(alice, depositAmount);
+        spk.approve(address(sSpk), depositAmount);
+        (uint256 depositedAmount, uint256 mintedShares) = sSpk.deposit(alice, depositAmount);
 
         // Redeem half the shares
         uint256 redeemShares = mintedShares / 2;
-        uint256 initialActiveShares = vaultToken.balanceOf(alice);
-        uint256 currentEpoch = vault.currentEpoch();
+        uint256 initialActiveShares = sSpk.balanceOf(alice);
+        uint256 currentEpoch = sSpk.currentEpoch();
 
         // Calculate expected assets based on current share price
         // Using totalStake() (total assets) and totalSupply() (total shares)
-        uint256 totalAssets = vault.totalStake();
-        uint256 totalShares = vaultToken.totalSupply();
+        uint256 totalAssets = sSpk.totalStake();
+        uint256 totalShares = sSpk.totalSupply();
         uint256 expectedAssets = (redeemShares * totalAssets) / totalShares;
 
-        (uint256 withdrawnAssets, uint256 redeemWithdrawalShares) = vault.redeem(alice, redeemShares);
+        (uint256 withdrawnAssets, uint256 redeemWithdrawalShares) = sSpk.redeem(alice, redeemShares);
 
         vm.stopPrank();
 
@@ -227,10 +227,10 @@ contract DepositWithdrawTest is BaseTest {
         assertEq(withdrawnAssets, expectedAssets, "Incorrect asset amount for redeemed shares");
 
         // Verify active shares were burned correctly
-        assertEq(vaultToken.balanceOf(alice), initialActiveShares - redeemShares, "Active shares not burned correctly");
+        assertEq(sSpk.balanceOf(alice), initialActiveShares - redeemShares, "Active shares not burned correctly");
 
         // Check withdrawal shares were created correctly
-        uint256 withdrawalShares = vault.withdrawalsOf(currentEpoch + 1, alice);
+        uint256 withdrawalShares = sSpk.withdrawalsOf(currentEpoch + 1, alice);
         assertEq(withdrawalShares, redeemWithdrawalShares, "Withdrawal shares mismatch");
 
         // Additional validation: withdrawal shares should represent the same value as withdrawn assets
@@ -242,13 +242,13 @@ contract DepositWithdrawTest is BaseTest {
         uint256 depositAmount = 1000 * 1e18;
 
         vm.startPrank(alice);
-        spkToken.approve(VAULT_ADDRESS, depositAmount);
-        (uint256 depositedAmount, uint256 mintedShares) = vault.deposit(alice, depositAmount);
+        spk.approve(address(sSpk), depositAmount);
+        (uint256 depositedAmount, uint256 mintedShares) = sSpk.deposit(alice, depositAmount);
 
         // Try to redeem more shares than owned
         uint256 excessShares = mintedShares + 1;
         vm.expectRevert("TooMuchRedeem()");
-        vault.redeem(alice, excessShares);
+        sSpk.redeem(alice, excessShares);
 
         vm.stopPrank();
     }
@@ -258,16 +258,16 @@ contract DepositWithdrawTest is BaseTest {
         uint256 depositAmount = 1000 * 1e18;
 
         vm.startPrank(alice);
-        spkToken.approve(VAULT_ADDRESS, depositAmount);
-        vault.deposit(alice, depositAmount);
+        spk.approve(address(sSpk), depositAmount);
+        sSpk.deposit(alice, depositAmount);
         vm.stopPrank();
 
         // Check total stake
-        uint256 totalStake = vault.totalStake();
+        uint256 totalStake = sSpk.totalStake();
         assertGt(totalStake, 0, "No total stake");
 
         // Check slashable balance
-        uint256 slashableBalance = vault.slashableBalanceOf(alice);
+        uint256 slashableBalance = sSpk.slashableBalanceOf(alice);
         assertGt(slashableBalance, 0, "No slashable balance for Alice");
     }
 
@@ -275,43 +275,43 @@ contract DepositWithdrawTest is BaseTest {
         uint256 depositAmount = 1000 * 1e18;
 
         vm.startPrank(alice);
-        spkToken.approve(VAULT_ADDRESS, depositAmount);
-        (uint256 depositedAmount, uint256 mintedShares) = vault.deposit(alice, depositAmount);
+        spk.approve(address(sSpk), depositAmount);
+        (uint256 depositedAmount, uint256 mintedShares) = sSpk.deposit(alice, depositAmount);
         vm.stopPrank();
 
         // Check if Alice can transfer her sSPK tokens to Bob
         uint256 transferAmount = mintedShares / 2;
 
         vm.startPrank(alice);
-        // This should work if vault tokens are transferable
-        vaultToken.transfer(bob, transferAmount);
+        // This should work if sSpk tokens are transferable
+        sSpk.transfer(bob, transferAmount);
         vm.stopPrank();
 
         // Verify transfer worked
-        assertEq(vaultToken.balanceOf(bob), transferAmount, "Bob should have received sSPK tokens");
-        assertEq(vaultToken.balanceOf(alice), mintedShares - transferAmount, "Alice should have remaining sSPK tokens");
+        assertEq(sSpk.balanceOf(bob), transferAmount, "Bob should have received sSPK tokens");
+        assertEq(sSpk.balanceOf(alice), mintedShares - transferAmount, "Alice should have remaining sSPK tokens");
     }
 
     function test_VaultTokenApprovalAndTransferFrom() public {
         uint256 depositAmount = 1000 * 1e18;
 
         vm.startPrank(alice);
-        spkToken.approve(VAULT_ADDRESS, depositAmount);
-        (uint256 depositedAmount, uint256 mintedShares) = vault.deposit(alice, depositAmount);
+        spk.approve(address(sSpk), depositAmount);
+        (uint256 depositedAmount, uint256 mintedShares) = sSpk.deposit(alice, depositAmount);
 
         // Alice approves Bob to spend her sSPK tokens
         uint256 approvalAmount = mintedShares / 2;
-        vaultToken.approve(bob, approvalAmount);
+        sSpk.approve(bob, approvalAmount);
         vm.stopPrank();
 
         // Bob uses the approval to transfer Alice's tokens to Charlie
         vm.startPrank(bob);
-        vaultToken.transferFrom(alice, charlie, approvalAmount);
+        sSpk.transferFrom(alice, charlie, approvalAmount);
         vm.stopPrank();
 
         // Verify transfer worked
-        assertEq(vaultToken.balanceOf(charlie), approvalAmount, "Charlie should have received sSPK tokens");
-        assertEq(vaultToken.balanceOf(alice), mintedShares - approvalAmount, "Alice should have remaining sSPK tokens");
-        assertEq(vaultToken.allowance(alice, bob), 0, "Allowance should be used up");
+        assertEq(sSpk.balanceOf(charlie), approvalAmount, "Charlie should have received sSPK tokens");
+        assertEq(sSpk.balanceOf(alice), mintedShares - approvalAmount, "Alice should have remaining sSPK tokens");
+        assertEq(sSpk.allowance(alice, bob), 0, "Allowance should be used up");
     }
 }
