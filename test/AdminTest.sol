@@ -5,6 +5,11 @@ import "./BaseTest.sol";
 
 contract AdminTest is BaseTest {
 
+    event SetDepositLimit(uint256 limit);
+    event SetDepositWhitelist(bool status);
+    event SetIsDepositLimit(bool status);
+    event SetDepositorWhitelistStatus(address indexed account, bool status);
+    
     function test_AdminCanSetDepositLimit() public {
         uint256 newLimit = 1_000_000e18; // 1M SPK limit
 
@@ -18,14 +23,34 @@ contract AdminTest is BaseTest {
 
         // Should succeed when called by Spark Governance
         vm.prank(SPARK_GOVERNANCE);
+        vm.expectEmit(address(sSpk));
+        emit SetIsDepositLimit(true);
         sSpk.setIsDepositLimit(true);
 
         vm.prank(SPARK_GOVERNANCE);
+        vm.expectEmit(address(sSpk));
+        emit SetDepositLimit(newLimit);
         sSpk.setDepositLimit(newLimit);
 
         // Verify the limit was set
         assertTrue(sSpk.isDepositLimit(), "Deposit limit not enabled");
         assertEq(sSpk.depositLimit(), newLimit, "Deposit limit not set correctly");
+
+        // should fail if limit is already set
+        vm.expectRevert("AlreadySet()");
+        vm.prank(SPARK_GOVERNANCE);
+        sSpk.setDepositLimit(newLimit);
+
+        // should fail if new limit is equal to previous limit.
+        vm.expectRevert("AlreadySet()");
+        vm.prank(SPARK_GOVERNANCE);
+        sSpk.setDepositLimit(newLimit);
+
+        // Can set a new deposit limit if it's different from the previous limit
+        uint256 newLimit2 = 2_000_000e18; // 2M SPK limit
+        vm.prank(SPARK_GOVERNANCE);
+        sSpk.setDepositLimit(newLimit2);
+        assertEq(sSpk.depositLimit(), newLimit2, "Deposit limit not set correctly");
     }
 
     function test_AdminCanSetDepositWhitelist() public {
@@ -39,15 +64,40 @@ contract AdminTest is BaseTest {
 
         // Should succeed when called by Spark Governance
         vm.prank(SPARK_GOVERNANCE);
+        vm.expectEmit(address(sSpk));
+        emit SetDepositWhitelist(true);
         sSpk.setDepositWhitelist(true);
 
         assertTrue(sSpk.depositWhitelist(), "Deposit whitelist not enabled");
 
+        // should fail if depositWhitelist is already set
+        vm.expectRevert("AlreadySet()");
+        vm.prank(SPARK_GOVERNANCE);
+        sSpk.setDepositWhitelist(true);
+
+        // should fail if user is address(0)
+        vm.expectRevert("InvalidAccount()");
+        vm.prank(SPARK_GOVERNANCE);
+        sSpk.setDepositorWhitelistStatus(address(0), true);
+
         // Test whitelisting a user
         vm.prank(SPARK_GOVERNANCE);
+        vm.expectEmit(address(sSpk));
+        emit SetDepositorWhitelistStatus(alice, true);
         sSpk.setDepositorWhitelistStatus(alice, true);
 
         assertTrue(sSpk.isDepositorWhitelisted(alice), "Alice not whitelisted");
+
+        // should fail if user is already whitelisted
+        vm.expectRevert("AlreadySet()");
+        vm.prank(SPARK_GOVERNANCE);
+        sSpk.setDepositorWhitelistStatus(alice, true);
+
+        // should whitelist a new user
+        vm.prank(SPARK_GOVERNANCE);
+        sSpk.setDepositorWhitelistStatus(bob, true);
+
+        assertTrue(sSpk.isDepositorWhitelisted(bob), "Bob not whitelisted");
     }
 
     function test_NonAdminCannotCallAdminFunctions() public {
@@ -78,56 +128,6 @@ contract AdminTest is BaseTest {
         );
         sSpk.setDepositorWhitelistStatus(bob, true);
 
-        vm.stopPrank();
-    }
-
-    function test_DepositLimitEnforcement() public {
-        uint256 depositLimit = 1000 * 1e18; // 1k SPK limit
-
-        // Set up deposit limit
-        vm.prank(SPARK_GOVERNANCE);
-        sSpk.setIsDepositLimit(true);
-
-        vm.prank(SPARK_GOVERNANCE);
-        sSpk.setDepositLimit(depositLimit);
-
-        // Alice deposits up to the limit
-        vm.startPrank(alice);
-        spk.approve(address(sSpk), depositLimit);
-        sSpk.deposit(alice, depositLimit);
-        vm.stopPrank();
-
-        // Bob tries to deposit more (should fail)
-        uint256 excessAmount = 1 * 1e18;
-        vm.startPrank(bob);
-        spk.approve(address(sSpk), excessAmount);
-        vm.expectRevert("DepositLimitReached()");
-        sSpk.deposit(bob, excessAmount);
-        vm.stopPrank();
-    }
-
-    function test_WhitelistDepositEnforcement() public {
-        // Enable whitelist
-        vm.prank(SPARK_GOVERNANCE);
-        sSpk.setDepositWhitelist(true);
-
-        // Whitelist only Alice
-        vm.prank(SPARK_GOVERNANCE);
-        sSpk.setDepositorWhitelistStatus(alice, true);
-
-        uint256 depositAmount = 100 * 1e18;
-
-        // Alice (whitelisted) should be able to deposit
-        vm.startPrank(alice);
-        spk.approve(address(sSpk), depositAmount);
-        sSpk.deposit(alice, depositAmount);
-        vm.stopPrank();
-
-        // Bob (not whitelisted) should be blocked
-        vm.startPrank(bob);
-        spk.approve(address(sSpk), depositAmount);
-        vm.expectRevert("NotWhitelistedDepositor()");
-        sSpk.deposit(bob, depositAmount);
         vm.stopPrank();
     }
 

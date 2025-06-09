@@ -151,9 +151,9 @@ contract SlashingTest is BaseTest {
         uint256 totalStakeAfter = sSpk.totalStake();
         uint256 sSpkBalanceAfter = spk.balanceOf(address(sSpk));
 
-        assertEq(totalStakeAfter, totalStakeBefore - actualSlashedAmount, "Total stake should decrease by exact slashed amount");
-        assertEq(sSpkBalanceAfter, sSpkBalanceBefore - actualSlashedAmount, "Vault balance should decrease by exact slashed amount");
-        assertEq(actualSlashedAmount, slashAmount, "Slashed amount should exactly equal requested amount");
+        assertEq(totalStakeAfter,     totalStakeBefore - actualSlashedAmount,  "Total stake should decrease by exact slashed amount");
+        assertEq(sSpkBalanceAfter,    sSpkBalanceBefore - actualSlashedAmount, "Vault balance should decrease by exact slashed amount");
+        assertEq(actualSlashedAmount, slashAmount,                             "Slashed amount should exactly equal requested amount");
     }
 
     function test_SlashingImpactOnUserWithdrawals() public {
@@ -161,15 +161,19 @@ contract SlashingTest is BaseTest {
         _initializeEpochSystem();
 
         uint256 depositAmount = 5000 * 1e18;
+
         vm.startPrank(alice);
+
         spk.approve(address(sSpk), depositAmount);
         sSpk.deposit(alice, depositAmount);
 
         // Alice initiates withdrawal before slashing
-        uint256 withdrawAmount = 2000 * 1e18;
-        uint256 currentEpoch = sSpk.currentEpoch();
+        uint256 withdrawAmount    = 2000 * 1e18;
+        uint256 currentEpoch      = sSpk.currentEpoch();
         uint256 currentEpochStart = sSpk.currentEpochStart();
+
         sSpk.withdraw(alice, withdrawAmount);
+
         vm.stopPrank();
 
         // Record withdrawal shares and sSpk state before slashing
@@ -186,9 +190,9 @@ contract SlashingTest is BaseTest {
         uint256 totalStakeAfter = sSpk.totalStake();
         uint256 sSpkBalanceAfter = spk.balanceOf(address(sSpk));
 
-        assertEq(totalStakeAfter, totalStakeBefore - actualSlashedAmount, "Total stake should decrease by exact slashed amount");
-        assertEq(sSpkBalanceAfter, sSpkBalanceBefore - actualSlashedAmount, "Vault balance should decrease by exact slashed amount");
-        assertGt(actualSlashedAmount, 0, "Should have slashed a positive amount");
+        assertEq(totalStakeAfter,     totalStakeBefore - actualSlashedAmount,  "Total stake should decrease by exact slashed amount");
+        assertEq(sSpkBalanceAfter,    sSpkBalanceBefore - actualSlashedAmount, "Vault balance should decrease by exact slashed amount");
+        assertGt(actualSlashedAmount, 0,                                       "Should have slashed a positive amount");
 
         // Fast forward to claim time
         uint256 claimableTime = currentEpochStart + (2 * EPOCH_DURATION);
@@ -202,7 +206,7 @@ contract SlashingTest is BaseTest {
 
         // Verify claim worked and amount is affected by slashing
         uint256 aliceBalanceAfter = spk.balanceOf(alice);
-        assertGt(claimedAmount, 0, "Should still be able to claim something");
+        assertGt(claimedAmount,     0,                                  "Should still be able to claim something");
         assertEq(aliceBalanceAfter, aliceBalanceBefore + claimedAmount, "Should receive exact claimed amount");
 
         // The claimed amount should be less than the original withdrawal due to slashing
@@ -226,6 +230,7 @@ contract SlashingTest is BaseTest {
         // Setup very large deposit to handle multiple slashes
         uint256 depositAmount = 50000 * 1e18; // 50k SPK
         vm.startPrank(alice);
+
         spk.approve(address(sSpk), depositAmount);
         sSpk.deposit(alice, depositAmount);
         vm.stopPrank();
@@ -236,15 +241,15 @@ contract SlashingTest is BaseTest {
         // First slashing event - small amount
         uint256 firstSlash = 50 * 1e18; // 50 SPK
         vm.prank(VETO_SLASHER);
-        uint256 firstSlashedAmount = sSpk.onSlash(firstSlash, uint48(block.timestamp));
 
-        uint256 stakeAfterFirstSlash = sSpk.totalStake();
+        uint256 firstSlashedAmount         = sSpk.onSlash(firstSlash, uint48(block.timestamp));
+        uint256 stakeAfterFirstSlash       = sSpk.totalStake();
         uint256 sSpkBalanceAfterFirstSlash = spk.balanceOf(address(sSpk));
 
         // Verify first slashing with exact amounts
-        assertEq(stakeAfterFirstSlash, initialTotalStake - firstSlashedAmount, "First slash should reduce stake by exact amount");
+        assertEq(stakeAfterFirstSlash,       initialTotalStake - firstSlashedAmount,   "First slash should reduce stake by exact amount");
         assertEq(sSpkBalanceAfterFirstSlash, initialVaultBalance - firstSlashedAmount, "First slash should reduce balance by exact amount");
-        assertEq(firstSlashedAmount, firstSlash, "First slashed amount should exactly equal requested amount");
+        assertEq(firstSlashedAmount,         firstSlash,                               "First slashed amount should exactly equal requested amount");
 
         // Advance time
         vm.warp(block.timestamp + 1 days);
@@ -252,19 +257,19 @@ contract SlashingTest is BaseTest {
         // Second slashing event - small amount
         uint256 secondSlash = 25 * 1e18; // 25 SPK
         vm.prank(VETO_SLASHER);
-        uint256 secondSlashedAmount = sSpk.onSlash(secondSlash, uint48(block.timestamp));
 
-        uint256 stakeAfterSecondSlash = sSpk.totalStake();
+        uint256 secondSlashedAmount         = sSpk.onSlash(secondSlash, uint48(block.timestamp));
+        uint256 stakeAfterSecondSlash       = sSpk.totalStake();
         uint256 sSpkBalanceAfterSecondSlash = spk.balanceOf(address(sSpk));
 
         // Verify second slashing with exact amounts
-        assertEq(stakeAfterSecondSlash, stakeAfterFirstSlash - secondSlashedAmount, "Second slash should reduce stake by exact amount");
+        assertEq(stakeAfterSecondSlash,       stakeAfterFirstSlash - secondSlashedAmount,       "Second slash should reduce stake by exact amount");
         assertEq(sSpkBalanceAfterSecondSlash, sSpkBalanceAfterFirstSlash - secondSlashedAmount, "Second slash should reduce balance by exact amount");
-        assertEq(secondSlashedAmount, secondSlash, "Second slashed amount should exactly equal requested amount");
+        assertEq(secondSlashedAmount,         secondSlash,                                      "Second slashed amount should exactly equal requested amount");
 
         // Verify cumulative slashing effect with precision
         uint256 totalSlashedAmount = firstSlashedAmount + secondSlashedAmount;
-        assertEq(stakeAfterSecondSlash, initialTotalStake - totalSlashedAmount, "Total stake reduction should equal sum of slashed amounts");
+        assertEq(stakeAfterSecondSlash,       initialTotalStake - totalSlashedAmount,   "Total stake reduction should equal sum of slashed amounts");
         assertEq(sSpkBalanceAfterSecondSlash, initialVaultBalance - totalSlashedAmount, "Total balance reduction should equal sum of slashed amounts");
     }
 
@@ -279,20 +284,20 @@ contract SlashingTest is BaseTest {
         vm.stopPrank();
 
         // Record state before zero slashing
-        uint256 totalStakeBefore = sSpk.totalStake();
         uint256 sSpkBalanceBefore = spk.balanceOf(address(sSpk));
+        uint256 totalStakeBefore  = sSpk.totalStake();
 
         // Test edge case: slashing with zero amount
         vm.prank(VETO_SLASHER);
         uint256 actualSlashedAmount = sSpk.onSlash(0, uint48(block.timestamp));
 
         // Verify that zero slashing doesn't change state
-        uint256 totalStakeAfter = sSpk.totalStake();
         uint256 sSpkBalanceAfter = spk.balanceOf(address(sSpk));
+        uint256 totalStakeAfter  = sSpk.totalStake();
 
-        assertEq(actualSlashedAmount, 0, "Zero slashing should return zero slashed amount");
-        assertEq(totalStakeAfter, totalStakeBefore, "Zero slashing should not change total stake");
-        assertEq(sSpkBalanceAfter, sSpkBalanceBefore, "Zero slashing should not change sSpk balance");
+        assertEq(actualSlashedAmount, 0,                 "Zero slashing should return zero slashed amount");
+        assertEq(totalStakeAfter,     totalStakeBefore,  "Zero slashing should not change total stake");
+        assertEq(sSpkBalanceAfter,    sSpkBalanceBefore, "Zero slashing should not change sSpk balance");
     }
 
     function test_SlashingWithFutureTimestamp() public {
@@ -317,8 +322,8 @@ contract SlashingTest is BaseTest {
         uint256 actualSlashedAmount = sSpk.onSlash(slashAmount, futureTimestamp);
 
         // Verify slashing still works regardless of timestamp
-        uint256 totalStakeAfter = sSpk.totalStake();
         uint256 sSpkBalanceAfter = spk.balanceOf(address(sSpk));
+        uint256 totalStakeAfter  = sSpk.totalStake();
 
         assertEq(totalStakeAfter, totalStakeBefore - actualSlashedAmount, "Total stake should decrease by exact slashed amount");
         assertEq(sSpkBalanceAfter, sSpkBalanceBefore - actualSlashedAmount, "Vault balance should decrease by exact slashed amount");
@@ -337,23 +342,24 @@ contract SlashingTest is BaseTest {
         vm.stopPrank();
 
         // Record initial balances before slashing
-        uint256 sSpkBalanceBefore = spk.balanceOf(address(sSpk));
-        uint256 burnerBalanceBefore = spk.balanceOf(BURNER_ROUTER);
+        uint256 sSpkBalanceBefore       = spk.balanceOf(address(sSpk));
+        uint256 burnerBalanceBefore     = spk.balanceOf(BURNER_ROUTER);
         uint256 governanceBalanceBefore = spk.balanceOf(SPARK_GOVERNANCE);
-        uint256 totalStakeBefore = sSpk.totalStake();
+        uint256 totalStakeBefore        = sSpk.totalStake();
 
         // Perform slashing
         uint256 slashAmount = 1000 * 1e18; // Slash 1k SPK
+
         uint48 captureTimestamp = uint48(block.timestamp);
 
         vm.prank(VETO_SLASHER);
         sSpk.onSlash(slashAmount, captureTimestamp);
 
         // Record balances after slashing
-        uint256 sSpkBalanceAfter = spk.balanceOf(address(sSpk));
-        uint256 burnerBalanceAfter = spk.balanceOf(BURNER_ROUTER);
+        uint256 sSpkBalanceAfter       = spk.balanceOf(address(sSpk));
+        uint256 burnerBalanceAfter     = spk.balanceOf(BURNER_ROUTER);
         uint256 governanceBalanceAfter = spk.balanceOf(SPARK_GOVERNANCE);
-        uint256 totalStakeAfter = sSpk.totalStake();
+        uint256 totalStakeAfter        = sSpk.totalStake();
 
         // Verify immediate fund flow effects
         // 1. Vault balance should decrease (funds leave immediately)
@@ -363,15 +369,15 @@ contract SlashingTest is BaseTest {
         assertLt(totalStakeAfter, totalStakeBefore, "Total stake should decrease due to slashing");
 
         // 3. Either burner router or governance should have received the funds
-        uint256 totalFundsAfter = sSpkBalanceAfter + burnerBalanceAfter + governanceBalanceAfter;
+        uint256 totalFundsAfter  = sSpkBalanceAfter + burnerBalanceAfter + governanceBalanceAfter;
         uint256 totalFundsBefore = sSpkBalanceBefore + burnerBalanceBefore + governanceBalanceBefore;
 
         // Total funds in the system should remain the same (just redistributed)
         assertEq(totalFundsAfter, totalFundsBefore, "Total funds should be conserved");
 
         // Calculate actual fund movements
-        uint256 sSpkDecrease = sSpkBalanceBefore - sSpkBalanceAfter;
-        uint256 burnerIncrease = burnerBalanceAfter - burnerBalanceBefore;
+        uint256 sSpkDecrease       = sSpkBalanceBefore - sSpkBalanceAfter;
+        uint256 burnerIncrease     = burnerBalanceAfter - burnerBalanceBefore;
         uint256 governanceIncrease = governanceBalanceAfter - governanceBalanceBefore;
 
         // The sSpk decrease should match the increase somewhere else
@@ -386,7 +392,9 @@ contract SlashingTest is BaseTest {
         _initializeEpochSystem();
 
         uint256 depositAmount = 5000 * 1e18;
+
         vm.startPrank(alice);
+
         spk.approve(address(sSpk), depositAmount);
         sSpk.deposit(alice, depositAmount);
         vm.stopPrank();
@@ -395,7 +403,7 @@ contract SlashingTest is BaseTest {
         uint256 sSpkBalanceBefore = spk.balanceOf(address(sSpk));
 
         // Slashing occurs at time T
-        uint256 slashTime = block.timestamp;
+        uint256 slashTime   = block.timestamp;
         uint256 slashAmount = 500 * 1e18;
 
         vm.prank(VETO_SLASHER);
@@ -414,7 +422,7 @@ contract SlashingTest is BaseTest {
 
         // Demonstrate timing relationships
         assertTrue(SLASHER_VETO_DURATION == 3 days, "Veto duration should be 3 days");
-        assertTrue(vetoWindowEnd > slashTime, "Veto window extends beyond slash time");
+        assertTrue(vetoWindowEnd > slashTime,       "Veto window extends beyond slash time");
 
         // Fast forward past veto window
         vm.warp(vetoWindowEnd + 1);
@@ -429,7 +437,7 @@ contract SlashingTest is BaseTest {
         // Reference: https://docs.symbiotic.fi/handbooks/networks-handbook
 
         // Real Symbiotic contract addresses on mainnet
-        address networkRegistry = 0xC773b1011461e7314CF05f97d95aa8e92C1Fd8aA;
+        address networkRegistry          = 0xC773b1011461e7314CF05f97d95aa8e92C1Fd8aA;
         address networkMiddlewareService = 0xD7dC9B366c027743D90761F71858BCa83C6899Ad;
 
         // Create a mock network wanting to onboard
@@ -481,8 +489,8 @@ contract SlashingTest is BaseTest {
         // Reference: https://docs.symbiotic.fi/handbooks/operators-handbook
 
         // Real Symbiotic contract addresses on mainnet
-        address operatorRegistry = 0xAd817a6Bc954F678451A71363f04150FDD81Af9F;
-        address sSpkOptInService = 0xb361894bC06cbBA7Ea8098BF0e32EB1906A5F891;
+        address operatorRegistry    = 0xAd817a6Bc954F678451A71363f04150FDD81Af9F;
+        address sSpkOptInService    = 0xb361894bC06cbBA7Ea8098BF0e32EB1906A5F891;
         address networkOptInService = 0x7133415b33B438843D581013f98A08704316633c;
 
         // Create mock operator wanting to onboard
@@ -556,7 +564,7 @@ contract SlashingTest is BaseTest {
 
         // Setup users with deposits
         uint256 aliceDeposit = 6000 * 1e18;  // 6k SPK
-        uint256 bobDeposit = 4000 * 1e18;    // 4k SPK
+        uint256 bobDeposit   = 4000 * 1e18;  // 4k SPK
 
         // Alice deposits
         vm.startPrank(alice);
@@ -571,10 +579,10 @@ contract SlashingTest is BaseTest {
         vm.stopPrank();
 
         // Record state before slashing
-        uint256 totalStakeBefore = sSpk.totalStake();
+        uint256 totalStakeBefore  = sSpk.totalStake();
         uint256 sSpkBalanceBefore = spk.balanceOf(address(sSpk));
         uint256 aliceSharesBefore = sSpk.balanceOf(alice);
-        uint256 bobSharesBefore = sSpk.balanceOf(bob);
+        uint256 bobSharesBefore   = sSpk.balanceOf(bob);
 
         // Perform slashing (20% of total stake)
         uint256 slashAmount = totalStakeBefore / 5; // 20% slash
@@ -582,23 +590,23 @@ contract SlashingTest is BaseTest {
         uint256 actualSlashedAmount = sSpk.onSlash(slashAmount, uint48(block.timestamp));
 
         // Record state after slashing
-        uint256 totalStakeAfter = sSpk.totalStake();
+        uint256 totalStakeAfter  = sSpk.totalStake();
         uint256 sSpkBalanceAfter = spk.balanceOf(address(sSpk));
 
         // Verify slashing occurred with exact amounts
-        assertEq(totalStakeAfter, totalStakeBefore - actualSlashedAmount, "Total stake should decrease by exact slashed amount");
-        assertEq(sSpkBalanceAfter, sSpkBalanceBefore - actualSlashedAmount, "Vault balance should decrease by exact slashed amount");
-        assertGt(actualSlashedAmount, 0, "Should have slashed a positive amount");
-        assertLe(actualSlashedAmount, slashAmount, "Slashed amount should not exceed requested amount");
+        assertEq(totalStakeAfter,     totalStakeBefore - actualSlashedAmount,  "Total stake should decrease by exact slashed amount");
+        assertEq(sSpkBalanceAfter,    sSpkBalanceBefore - actualSlashedAmount, "Vault balance should decrease by exact slashed amount");
+        assertGt(actualSlashedAmount, 0,                                       "Should have slashed a positive amount");
+        assertLe(actualSlashedAmount, slashAmount,                             "Slashed amount should not exceed requested amount");
 
         // Shares should remain the same (slashing doesn't burn shares, just reduces their value)
         assertEq(sSpk.balanceOf(alice), aliceSharesBefore, "Alice's shares should remain unchanged");
-        assertEq(sSpk.balanceOf(bob), bobSharesBefore, "Bob's shares should remain unchanged");
+        assertEq(sSpk.balanceOf(bob),   bobSharesBefore,   "Bob's shares should remain unchanged");
 
         // Both users should be affected proportionally through share value reduction
         // The proportional impact is reflected in the reduced total stake backing their shares
         uint256 shareValueReductionPercentage = (actualSlashedAmount * 10000) / totalStakeBefore; // basis points
-        assertTrue(shareValueReductionPercentage > 0, "Share value should be reduced by slashing");
+        assertTrue(shareValueReductionPercentage > 0,     "Share value should be reduced by slashing");
         assertTrue(shareValueReductionPercentage <= 2000, "Share value reduction should be reasonable (<=20%)");
     }
 
@@ -608,7 +616,7 @@ contract SlashingTest is BaseTest {
 
         // Setup: Multiple users with different deposit amounts
         uint256 aliceDeposit = 3000 * 1e18;  // 3k SPK
-        uint256 bobDeposit = 7000 * 1e18;    // 7k SPK
+        uint256 bobDeposit   = 7000 * 1e18;    // 7k SPK
 
         // Alice deposits
         vm.startPrank(alice);
@@ -624,7 +632,7 @@ contract SlashingTest is BaseTest {
 
         // Both users initiate withdrawals
         uint256 aliceWithdrawAmount = 1500 * 1e18; // 50% of Alice's deposit
-        uint256 bobWithdrawAmount = 2100 * 1e18;   // 30% of Bob's deposit
+        uint256 bobWithdrawAmount   = 2100 * 1e18;   // 30% of Bob's deposit
 
         uint256 currentEpoch = sSpk.currentEpoch();
         uint256 currentEpochStart = sSpk.currentEpochStart();

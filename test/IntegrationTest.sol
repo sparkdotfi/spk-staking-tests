@@ -41,9 +41,10 @@ contract IntegrationTest is BaseTest {
         uint256 expectedFinalBalance = initialBalance - deposited + claimed;
 
         // Basic verifications with precise assertions
-        assertEq(deposited, depositAmount, "Should have deposited exact amount");
+        assertEq(deposited, depositAmount,  "Should have deposited exact amount");
+        assertEq(claimed,   withdrawAmount, "Should have claimed exact withdraw amount");
+
         assertGt(sharesReceived, 0, "Should have received shares"); // Shares calculation depends on sSpk state
-        assertEq(claimed, withdrawAmount, "Should have claimed exact withdraw amount");
 
         // Verify withdrawal shares equal claimed amount (1:1 relationship in normal operation)
         assertEq(withdrawalShares, claimed, "Withdrawal shares should equal claimed amount");
@@ -62,13 +63,13 @@ contract IntegrationTest is BaseTest {
         _initializeEpochSystem();
 
         // 1. Verify sSpk is properly integrated with ecosystem components
-        assertEq(sSpk.delegator(), NETWORK_DELEGATOR, "Should use network delegator");
-        assertEq(sSpk.slasher(), VETO_SLASHER, "Should use veto slasher");
-        assertEq(address(sSpk.burner()), BURNER_ROUTER, "Should use burner router");
+        assertEq(sSpk.delegator(),       NETWORK_DELEGATOR, "Should use network delegator");
+        assertEq(sSpk.slasher(),         VETO_SLASHER,      "Should use veto slasher");
+        assertEq(address(sSpk.burner()), BURNER_ROUTER,     "Should use burner router");
 
         // 2. Test that sSpk delegation is working
         assertTrue(sSpk.isDelegatorInitialized(), "Delegator should be initialized");
-        assertTrue(sSpk.isSlasherInitialized(), "Slasher should be initialized");
+        assertTrue(sSpk.isSlasherInitialized(),   "Slasher should be initialized");
 
         // 3. Verify sSpk can handle the full staking lifecycle
         uint256 depositAmount = 1000 * 1e18;
@@ -92,11 +93,12 @@ contract IntegrationTest is BaseTest {
 
         // Verify proportional share burning: burned shares = (total shares * withdraw amount) / deposit amount
         uint256 expectedBurnedShares = (shares * withdrawAmount) / depositAmount;
-        assertEq(burnedShares, expectedBurnedShares, "Should burn proportional shares");
-        assertEq(withdrawalShares, withdrawAmount, "Withdrawal shares should equal withdraw amount");
+        assertEq(burnedShares,     expectedBurnedShares, "Should burn proportional shares");
+        assertEq(withdrawalShares, withdrawAmount,       "Withdrawal shares should equal withdraw amount");
 
         // Slashing (simulates network detecting misbehavior)
         uint256 slashAmount = 100 * 1e18;
+        uint256 initialBurnerSpkBalance = spk.balanceOf(address(sSpk.burner()));
         vm.prank(VETO_SLASHER);
         sSpk.onSlash(slashAmount, uint48(block.timestamp));
 
@@ -105,7 +107,8 @@ contract IntegrationTest is BaseTest {
         assertEq(newTotalStake, totalStake - slashAmount, "Slashing should reduce total stake by exact slash amount");
 
         // 4. Test that burner integration works (for slashed funds)
-        assertEq(address(sSpk.burner()), BURNER_ROUTER, "Burner should be properly set");
+        assertEq(address(sSpk.burner()),                BURNER_ROUTER,                         "Burner should be properly set");
+        assertEq(spk.balanceOf(address(sSpk.burner())), initialBurnerSpkBalance + slashAmount, "Burner should have received slashed tokens");
 
         // The ecosystem integration test shows that all components work together
         assertTrue(true, "Vault ecosystem integration working correctly");
@@ -143,7 +146,7 @@ contract IntegrationTest is BaseTest {
 
         // This gives Alice time to exit if she disagrees with governance decisions
         uint256 protectionWindow = governanceChangeEffectiveTime - aliceClaimTime;
-        assertGt(protectionWindow, 0, "Users should have protection window to exit");
+        assertGt(protectionWindow, 0,            "Users should have protection window to exit");
         assertLt(protectionWindow, BURNER_DELAY, "Protection window should be less than full burner delay");
 
         // Simulate slashing during Alice's unstaking period
@@ -253,13 +256,14 @@ contract IntegrationTest is BaseTest {
 
         // Verify claims worked with realistic amounts (may be affected by slashing)
         assertGt(aliceClaimedAmount, 0, "Alice should receive some tokens");
-        assertGt(bobClaimedAmount, 0, "Bob should receive some tokens");
+        assertGt(bobClaimedAmount,   0, "Bob should receive some tokens");
 
         // Claims should be close to withdraw amounts but may be affected by slashing
         uint256 aliceDifference = _abs(aliceClaimedAmount, aliceWithdrawAmount);
-        uint256 bobDifference = _abs(bobClaimedAmount, bobWithdrawAmount);
+        uint256 bobDifference   = _abs(bobClaimedAmount, bobWithdrawAmount);
+
         assertLt(aliceDifference, aliceWithdrawAmount / 10, "Alice's claim should be reasonably close to withdraw amount");
-        assertLt(bobDifference, bobWithdrawAmount / 10, "Bob's claim should be reasonably close to withdraw amount");
+        assertLt(bobDifference,   bobWithdrawAmount / 10,   "Bob's claim should be reasonably close to withdraw amount");
 
         // Charlie (who didn't withdraw) still has his shares
         uint256 charlieShares = sSpk.balanceOf(charlie);
@@ -295,7 +299,7 @@ contract IntegrationTest is BaseTest {
         uint256 withdrawalEpoch = currentEpoch + 1;
         uint256 recordedWithdrawalShares = sSpk.withdrawalsOf(withdrawalEpoch, alice);
         assertEq(recordedWithdrawalShares, aliceWithdrawalShares, "Withdrawal shares should be recorded");
-        assertEq(aliceWithdrawalShares, withdrawAmount, "Withdrawal shares should equal withdraw amount");
+        assertEq(aliceWithdrawalShares,    withdrawAmount,        "Withdrawal shares should equal withdraw amount");
 
         // Now slashing occurs AFTER withdrawal is initiated
         uint256 slashAmount = 1000 * 1e18; // Slash 1k SPK
@@ -312,7 +316,7 @@ contract IntegrationTest is BaseTest {
         uint256 claimedAmount = sSpk.claim(alice, withdrawalEpoch);
 
         // Verify Alice receives some amount (slashing may affect even prior withdrawals)
-        assertGt(claimedAmount, 0, "Alice should receive some amount despite slashing");
+        assertGt(claimedAmount,        0,                                  "Alice should receive some amount despite slashing");
         assertEq(spk.balanceOf(alice), aliceBalanceBefore + claimedAmount, "Alice should receive claimed tokens");
 
         // The claimed amount should be reasonably close to withdraw amount

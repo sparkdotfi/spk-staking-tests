@@ -3,16 +3,16 @@ pragma solidity 0.8.25;
 
 import "forge-std/Test.sol";
 
-// Import OpenZeppelin interfaces
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/access/IAccessControl.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-
 // Import Symbiotic interfaces
-import "../lib/core/src/interfaces/vault/IVaultTokenized.sol";
-import "../lib/core/src/interfaces/vault/IVault.sol";
 import "../lib/burners/src/interfaces/router/IBurnerRouter.sol";
+import "../lib/core/src/interfaces/vault/IVault.sol";
+import "../lib/core/src/interfaces/vault/IVaultTokenized.sol";
+
+// Import OpenZeppelin interfaces
+import "@openzeppelin/contracts/access/IAccessControl.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 interface IStakedSPK is IERC20Metadata, IVaultTokenized, IAccessControl {}
 
@@ -31,21 +31,21 @@ abstract contract BaseTest is Test {
     address constant VETO_SLASHER      = 0xeF4fa9b4529A9e983B18F223A284025f24d2F18B;
 
     // Constants from deployment
-    uint48 constant EPOCH_DURATION        = 2 weeks;
     uint48 constant BURNER_DELAY          = 31 days;
+    uint48 constant EPOCH_DURATION        = 2 weeks;
     uint48 constant SLASHER_VETO_DURATION = 3 days;
 
     // Test users
     address alice    = makeAddr("alice");
+    address attacker = makeAddr("attacker");
     address bob      = makeAddr("bob");
     address charlie  = makeAddr("charlie");
-    address attacker = makeAddr("attacker");
 
     // Contract instances
-    IAccessControl  vaultAccess;
     IBurnerRouter   burnerRouter;
     IERC20Metadata  spk;
-    IStakedSPK      sSpk; // For accessing ERC20 functions
+    IStakedSPK      sSpk;  // For accessing ERC20 functions
+    IAccessControl  vaultAccess;
 
     // ============ SETUP ============
 

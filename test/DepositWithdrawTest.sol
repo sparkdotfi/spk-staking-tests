@@ -5,6 +5,31 @@ import "./BaseTest.sol";
 
 contract DepositWithdrawTest is BaseTest {
 
+    function test_WhitelistDepositEnforcement() public {
+        // Enable whitelist
+        vm.prank(SPARK_GOVERNANCE);
+        sSpk.setDepositWhitelist(true);
+
+        // Whitelist only Alice
+        vm.prank(SPARK_GOVERNANCE);
+        sSpk.setDepositorWhitelistStatus(alice, true);
+
+        uint256 depositAmount = 100 * 1e18;
+
+        // Alice (whitelisted) should be able to deposit
+        vm.startPrank(alice);
+        spk.approve(address(sSpk), depositAmount);
+        sSpk.deposit(alice, depositAmount);
+        vm.stopPrank();
+
+        // Bob (not whitelisted) should be blocked
+        vm.startPrank(bob);
+        spk.approve(address(sSpk), depositAmount);
+        vm.expectRevert("NotWhitelistedDepositor()");
+        sSpk.deposit(bob, depositAmount);
+        vm.stopPrank();
+    }
+
     function test_UserDeposit() public {
         uint256 depositAmount = 1000 * 1e18; // 1000 SPK
 
@@ -26,7 +51,7 @@ contract DepositWithdrawTest is BaseTest {
         assertGt(mintedShares, 0, "No shares minted");
 
         // Check balances after deposit
-        assertEq(spk.balanceOf(alice),   initialSPKBalance  - depositAmount, "SPK not transferred");
+        assertEq(spk.balanceOf(alice),  initialSPKBalance  - depositAmount, "SPK not transferred");
         assertEq(sSpk.balanceOf(alice), initialSSPKBalance + mintedShares,  "sSPK not minted");
         assertEq(sSpk.totalSupply(),    initialTotalSupply + mintedShares,  "Total supply not updated");
     }
@@ -47,10 +72,40 @@ contract DepositWithdrawTest is BaseTest {
         vm.stopPrank();
 
         // Verify both deposits
-        assertEq(aliceDeposited, depositAmount, "Alice deposit amount incorrect");
-        assertEq(bobDeposited, depositAmount, "Bob deposit amount incorrect");
-        assertEq(sSpk.balanceOf(alice), aliceShares, "Alice shares incorrect");
-        assertEq(sSpk.balanceOf(bob), bobShares, "Bob shares incorrect");
+        assertEq(aliceDeposited,        depositAmount, "Alice deposit amount incorrect");
+        assertEq(bobDeposited,          depositAmount, "Bob deposit amount incorrect");
+        assertEq(sSpk.balanceOf(alice), aliceShares,   "Alice shares incorrect");
+        assertEq(sSpk.balanceOf(bob),   bobShares,     "Bob shares incorrect");
+    }
+
+    function test_DepositLimitEnforcement() public {
+        uint256 depositLimit = 1000 * 1e18; // 1k SPK limit
+
+        // Set up deposit limit
+        vm.prank(SPARK_GOVERNANCE);
+        sSpk.setIsDepositLimit(true);
+
+        vm.prank(SPARK_GOVERNANCE);
+        sSpk.setDepositLimit(depositLimit);
+
+        // Alice deposits up to the limit
+        vm.startPrank(alice);
+        spk.approve(address(sSpk), depositLimit);
+        sSpk.deposit(alice, depositLimit);
+        vm.stopPrank();
+
+        // Bob tries to deposit more (should fail)
+        uint256 excessAmount = 1 * 1e18;
+        vm.startPrank(bob);
+        spk.approve(address(sSpk), excessAmount);
+        vm.expectRevert("DepositLimitReached()");
+        sSpk.deposit(bob, excessAmount);
+        vm.stopPrank();
+    }
+
+    function test_WithdrawRevertZeroAddress() public {
+        vm.expectRevert("InvalidClaimer()");
+        sSpk.withdraw(address(0), 1e18);
     }
 
     function test_UserWithdrawal() public {
@@ -64,20 +119,30 @@ contract DepositWithdrawTest is BaseTest {
         uint256 initialShares = sSpk.balanceOf(alice);
         uint256 withdrawAmount = 500 * 1e18; // Withdraw half
 
+        // Revert if withdrawal amount is greater than balance
+        vm.expectRevert("TooMuchWithdraw()");
+        sSpk.withdraw(alice, depositAmount + 1);
+
         // Initiate withdrawal
         (uint256 burnedShares, uint256 mintedWithdrawalShares) = sSpk.withdraw(alice, withdrawAmount);
 
         vm.stopPrank();
 
         // Verify withdrawal initiation
-        assertGt(burnedShares, 0, "No shares burned");
+        assertGt(burnedShares,           0, "No shares burned");
         assertGt(mintedWithdrawalShares, 0, "No withdrawal shares minted");
+
         assertEq(sSpk.balanceOf(alice), initialShares - burnedShares, "Active shares not burned");
 
         // Check withdrawal shares
         uint256 currentEpoch = sSpk.currentEpoch();
         uint256 withdrawalShares = sSpk.withdrawalsOf(currentEpoch + 1, alice);
         assertEq(withdrawalShares, mintedWithdrawalShares, "Withdrawal shares mismatch");
+    }
+
+    function test_ClaimRevertZeroAddress() public {
+        vm.expectRevert("InvalidRecipient()");
+        sSpk.claim(address(0), 1);
     }
 
     function test_ClaimAfterEpochDelay() public {
@@ -113,6 +178,10 @@ contract DepositWithdrawTest is BaseTest {
         uint256 withdrawalEpoch = currentEpoch + 1;
         uint256 withdrawalShares = sSpk.withdrawalsOf(withdrawalEpoch, alice);
 
+        // claim reverts if epoch > current epoch
+        vm.expectRevert("InvalidEpoch()");
+        sSpk.claim(alice, newCurrentEpoch + 1);
+
         // Only proceed if we have withdrawal shares
         if (withdrawalShares > 0) {
             // Claim withdrawal - wrap in try/catch to see if there's a revert
@@ -121,6 +190,10 @@ contract DepositWithdrawTest is BaseTest {
                 // Verify claim
                 assertGt(claimedAmount, 0, "Nothing claimed");
                 assertEq(spk.balanceOf(alice), aliceBalanceBefore + claimedAmount, "SPK not received");
+
+                // claim reverts if withdrawal shares for the epoch are already claimed
+                vm.expectRevert("InsufficientClaim()");
+                sSpk.claim(alice, withdrawalEpoch);
 
                 // Check if withdrawal was actually cleared
                 uint256 remainingShares = sSpk.withdrawalsOf(withdrawalEpoch, alice);
@@ -220,7 +293,7 @@ contract DepositWithdrawTest is BaseTest {
         vm.stopPrank();
 
         // Verify redeem results with proper mathematical validation
-        assertGt(withdrawnAssets, 0, "No assets withdrawn");
+        assertGt(withdrawnAssets,        0, "No assets withdrawn");
         assertGt(redeemWithdrawalShares, 0, "No withdrawal shares minted");
 
         // Validate mathematical correctness of redemption
@@ -288,7 +361,7 @@ contract DepositWithdrawTest is BaseTest {
         vm.stopPrank();
 
         // Verify transfer worked
-        assertEq(sSpk.balanceOf(bob), transferAmount, "Bob should have received sSPK tokens");
+        assertEq(sSpk.balanceOf(bob),   transferAmount,                "Bob should have received sSPK tokens");
         assertEq(sSpk.balanceOf(alice), mintedShares - transferAmount, "Alice should have remaining sSPK tokens");
     }
 
