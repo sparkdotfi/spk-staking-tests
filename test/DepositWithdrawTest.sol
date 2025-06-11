@@ -3,24 +3,43 @@ pragma solidity 0.8.25;
 
 import "./BaseTest.sol";
 
-contract DepositWithdrawTest is BaseTest {
+contract testDepositFailureTests is BaseTest {
 
-    function test_WhitelistDepositEnforcement() public {
+    function test_deposit_insufficientBalance() public {
+        uint256 aliceBalance  = spk.balanceOf(alice);
+        uint256 depositAmount = aliceBalance + 1; // More than Alice has
+
+        vm.startPrank(alice);
+        spk.approve(address(sSpk), depositAmount);
+
+        vm.expectRevert("SDAO/insufficient-balance");
+        sSpk.deposit(alice, depositAmount);
+
+        vm.stopPrank();
+    }
+
+    function test_deposit_invalidOnBehalfOf() public {
+        vm.startPrank(alice);
+        spk.approve(address(sSpk), 1000 * 1e18);
+        vm.expectRevert("InvalidOnBehalfOf()");
+        sSpk.deposit(address(0), 1000 * 1e18);
+        vm.stopPrank();
+    }
+
+    function test_deposit_zeroAmount() public {
+        vm.startPrank(alice);
+        spk.approve(address(sSpk), 0);
+        vm.expectRevert("InsufficientDeposit()");
+        sSpk.deposit(alice, 0);
+        vm.stopPrank();
+    }
+
+    function test_deposit_notWhitelistedDepositor() public {
         // Enable whitelist
         vm.prank(SPARK_GOVERNANCE);
         sSpk.setDepositWhitelist(true);
 
-        // Whitelist only Alice
-        vm.prank(SPARK_GOVERNANCE);
-        sSpk.setDepositorWhitelistStatus(alice, true);
-
         uint256 depositAmount = 100 * 1e18;
-
-        // Alice (whitelisted) should be able to deposit
-        vm.startPrank(alice);
-        spk.approve(address(sSpk), depositAmount);
-        sSpk.deposit(alice, depositAmount);
-        vm.stopPrank();
 
         // Bob (not whitelisted) should be blocked
         vm.startPrank(bob);
@@ -30,7 +49,36 @@ contract DepositWithdrawTest is BaseTest {
         vm.stopPrank();
     }
 
-    function test_UserDeposit() public {
+    function test_deposit_depositLimitReached() public {
+        uint256 depositLimit = 1000 * 1e18; // 1k SPK limit
+
+        // Set up deposit limit
+        vm.prank(SPARK_GOVERNANCE);
+        sSpk.setIsDepositLimit(true);
+
+        vm.prank(SPARK_GOVERNANCE);
+        sSpk.setDepositLimit(depositLimit);
+
+        // Alice deposits up to the limit
+        vm.startPrank(alice);
+        spk.approve(address(sSpk), depositLimit);
+        sSpk.deposit(alice, depositLimit);
+        vm.stopPrank();
+
+        // Bob tries to deposit more (should fail)
+        uint256 excessAmount = 1 * 1e18;
+        vm.startPrank(bob);
+        spk.approve(address(sSpk), excessAmount);
+        vm.expectRevert("DepositLimitReached()");
+        sSpk.deposit(bob, excessAmount);
+        vm.stopPrank();
+    }
+
+}
+
+contract testDepositSuccessTests is BaseTest {
+
+     function test_UserDeposit() public {
         uint256 depositAmount = 1000 * 1e18; // 1000 SPK
 
         vm.startPrank(alice);
@@ -78,35 +126,60 @@ contract DepositWithdrawTest is BaseTest {
         assertEq(sSpk.balanceOf(bob),   bobShares,     "Bob shares incorrect");
     }
 
-    function test_DepositLimitEnforcement() public {
-        uint256 depositLimit = 1000 * 1e18; // 1k SPK limit
+    function test_deposit_VaultStakeAndSlashableBalance() public {
+        // Test stake-related functions
+        uint256 depositAmount = 1000 * 1e18;
 
-        // Set up deposit limit
-        vm.prank(SPARK_GOVERNANCE);
-        sSpk.setIsDepositLimit(true);
-
-        vm.prank(SPARK_GOVERNANCE);
-        sSpk.setDepositLimit(depositLimit);
-
-        // Alice deposits up to the limit
         vm.startPrank(alice);
-        spk.approve(address(sSpk), depositLimit);
-        sSpk.deposit(alice, depositLimit);
+        spk.approve(address(sSpk), depositAmount);
+        sSpk.deposit(alice, depositAmount);
         vm.stopPrank();
 
-        // Bob tries to deposit more (should fail)
-        uint256 excessAmount = 1 * 1e18;
-        vm.startPrank(bob);
-        spk.approve(address(sSpk), excessAmount);
-        vm.expectRevert("DepositLimitReached()");
-        sSpk.deposit(bob, excessAmount);
-        vm.stopPrank();
+        // Check total stake
+        uint256 totalStake = sSpk.totalStake();
+        assertGt(totalStake, 0, "No total stake");
+
+        // Check slashable balance
+        uint256 slashableBalance = sSpk.slashableBalanceOf(alice);
+        assertGt(slashableBalance, 0, "No slashable balance for Alice");
     }
 
-    function test_WithdrawRevertZeroAddress() public {
+}
+
+contract testWithdrawFailureTests is BaseTest {
+
+    function test_withdraw_invalidClaimer() public {
         vm.expectRevert("InvalidClaimer()");
         sSpk.withdraw(address(0), 1e18);
     }
+
+    function test_withdraw_zeroAmount() public {
+        uint256 depositAmount = 1000 * 1e18;
+
+        vm.startPrank(alice);
+        spk.approve(address(sSpk), depositAmount);
+        sSpk.deposit(alice, depositAmount);
+
+        vm.expectRevert("InsufficientWithdrawal()");
+        sSpk.withdraw(alice, 0);
+        vm.stopPrank();
+    }
+
+    function test_withdraw_tooMuchWithdraw() public {
+        // First deposit
+        uint256 depositAmount = 1000 * 1e18;
+        vm.startPrank(alice);
+        spk.approve(address(sSpk), depositAmount);
+        sSpk.deposit(alice, depositAmount);
+
+        // Revert if withdrawal amount is greater than balance
+        vm.expectRevert("TooMuchWithdraw()");
+        sSpk.withdraw(alice, depositAmount + 1);
+    }
+
+}
+
+contract testWithdrawSuccessTests is BaseTest {
 
     function test_UserWithdrawal() public {
         // First deposit
@@ -118,10 +191,6 @@ contract DepositWithdrawTest is BaseTest {
         // Record initial state
         uint256 initialShares = sSpk.balanceOf(alice);
         uint256 withdrawAmount = 500 * 1e18; // Withdraw half
-
-        // Revert if withdrawal amount is greater than balance
-        vm.expectRevert("TooMuchWithdraw()");
-        sSpk.withdraw(alice, depositAmount + 1);
 
         // Initiate withdrawal
         (uint256 burnedShares, uint256 mintedWithdrawalShares) = sSpk.withdraw(alice, withdrawAmount);
@@ -140,24 +209,83 @@ contract DepositWithdrawTest is BaseTest {
         assertEq(withdrawalShares, mintedWithdrawalShares, "Withdrawal shares mismatch");
     }
 
-    function test_ClaimRevertZeroAddress() public {
+}
+
+contract testClaimFailureTests is BaseTest {
+
+    function test_claim_invalidRecipient() public {
         vm.expectRevert("InvalidRecipient()");
+        vm.prank(alice);
         sSpk.claim(address(0), 1);
     }
 
-    function test_ClaimAfterEpochDelay() public {
-        // Step 0: Initialize epoch system with a deposit
-        _initializeEpochSystem();
-
-        // Setup: Deposit and withdraw
-        uint256 depositAmount = 2000 * 1e18;
-        uint256 withdrawAmount = 1000 * 1e18;
+    function test_claim_beforeEpochDelay() public {
+        uint256 depositAmount = 1000 * 1e18;
 
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
         sSpk.deposit(alice, depositAmount);
 
         uint256 currentEpoch = sSpk.currentEpoch();
+        sSpk.withdraw(alice, 500 * 1e18);
+
+        // Try to claim immediately (should fail)
+        vm.expectRevert("InvalidEpoch()");
+        sSpk.claim(alice, currentEpoch + 1);
+
+        vm.stopPrank();
+    }
+
+    function test_claim_insufficientClaim() public {
+        _initializeEpochSystem();
+
+        // Setup: Deposit and withdraw
+        uint256 depositAmount  = 2000 * 1e18;
+        uint256 withdrawAmount = 1000 * 1e18;
+
+        vm.startPrank(alice);
+        spk.approve(address(sSpk), depositAmount);
+        sSpk.deposit(alice, depositAmount);
+
+        uint256 currentEpoch      = sSpk.currentEpoch();
+        uint256 currentEpochStart = sSpk.currentEpochStart();
+
+        sSpk.withdraw(alice, withdrawAmount);
+        vm.stopPrank();
+
+        // Calculate when we can claim: current epoch start + 2 full epochs
+        // This ensures we wait until after the next epoch ends
+        uint256 claimableTime = currentEpochStart + (2 * EPOCH_DURATION);
+
+        // Fast forward to when withdrawal becomes claimable
+        vm.warp(claimableTime + 1); // +1 to be sure we're past the boundary
+
+        // Claim withdrawal
+        vm.prank(alice);
+        sSpk.claim(alice, currentEpoch + 1);
+
+        // Claim again should revert
+        vm.expectRevert("InsufficientClaim()");
+        sSpk.claim(alice, currentEpoch + 1);
+    }
+
+}
+
+contract testClaimSuccessTests is BaseTest {
+
+    function test_claimAfterEpochDelay() public {
+        // Step 0: Initialize epoch system with a deposit
+        _initializeEpochSystem();
+
+        // Setup: Deposit and withdraw
+        uint256 depositAmount  = 2000 * 1e18;
+        uint256 withdrawAmount = 1000 * 1e18;
+
+        vm.startPrank(alice);
+        spk.approve(address(sSpk), depositAmount);
+        sSpk.deposit(alice, depositAmount);
+
+        uint256 currentEpoch      = sSpk.currentEpoch();
         uint256 currentEpochStart = sSpk.currentEpochStart();
 
         sSpk.withdraw(alice, withdrawAmount);
@@ -175,12 +303,8 @@ contract DepositWithdrawTest is BaseTest {
 
         // Record state before claim
         uint256 aliceBalanceBefore = spk.balanceOf(alice);
-        uint256 withdrawalEpoch = currentEpoch + 1;
-        uint256 withdrawalShares = sSpk.withdrawalsOf(withdrawalEpoch, alice);
-
-        // claim reverts if epoch > current epoch
-        vm.expectRevert("InvalidEpoch()");
-        sSpk.claim(alice, newCurrentEpoch + 1);
+        uint256 withdrawalEpoch    = currentEpoch + 1;
+        uint256 withdrawalShares   = sSpk.withdrawalsOf(withdrawalEpoch, alice);
 
         // Only proceed if we have withdrawal shares
         if (withdrawalShares > 0) {
@@ -190,10 +314,6 @@ contract DepositWithdrawTest is BaseTest {
                 // Verify claim
                 assertGt(claimedAmount, 0, "Nothing claimed");
                 assertEq(spk.balanceOf(alice), aliceBalanceBefore + claimedAmount, "SPK not received");
-
-                // claim reverts if withdrawal shares for the epoch are already claimed
-                vm.expectRevert("InsufficientClaim()");
-                sSpk.claim(alice, withdrawalEpoch);
 
                 // Check if withdrawal was actually cleared
                 uint256 remainingShares = sSpk.withdrawalsOf(withdrawalEpoch, alice);
@@ -218,12 +338,39 @@ contract DepositWithdrawTest is BaseTest {
         }
     }
 
-    function test_ClaimBatch() public {
+}
+
+contract testClaimBatchFailureTests is BaseTest {
+
+    function test_claimBatch_invalidRecipient() public {
+        _initializeEpochSystem();
+
+        uint256[] memory epochs = new uint256[](1);
+        epochs[0] = 1;
+
+        vm.expectRevert("InvalidRecipient()");
+        vm.prank(alice);
+        sSpk.claimBatch(address(0), epochs);
+    }
+
+    function test_claimBatch_emptyEpochs() public {
+        uint256[] memory epochs = new uint256[](0);
+
+        vm.expectRevert("InvalidLengthEpochs()");
+        vm.prank(alice);
+        sSpk.claimBatch(alice, epochs);
+    }
+
+}
+
+contract testClaimBatchSuccessTests is BaseTest {
+
+    function test_claimBatch() public {
         // Step 0: Initialize epoch system with a deposit
         _initializeEpochSystem();
 
         // Setup multiple withdrawals across different epochs
-        uint256 depositAmount = 3000 * 1e18;
+        uint256 depositAmount  = 3000 * 1e18;
         uint256 withdrawAmount = 500 * 1e18;
 
         vm.startPrank(alice);
@@ -237,6 +384,7 @@ contract DepositWithdrawTest is BaseTest {
         for (uint256 i = 0; i < 3; i++) {
             uint256 currentEpoch = sSpk.currentEpoch();
             withdrawalEpochs[i] = currentEpoch + 1;
+
             sSpk.withdraw(alice, withdrawAmount);
 
             // Advance to next epoch
@@ -262,30 +410,59 @@ contract DepositWithdrawTest is BaseTest {
         // Verify batch claim
         assertGt(totalClaimed, 0, "Nothing claimed in batch");
         assertEq(spk.balanceOf(alice), aliceBalanceBefore + totalClaimed, "SPK not received from batch claim");
-
-        // Check withdrawals - Note: shares may remain, but claims work correctly
-        for (uint256 i = 0; i < withdrawalEpochs.length; i++) {
-            uint256 remainingShares = sSpk.withdrawalsOf(withdrawalEpochs[i], alice);
-            // Note: remainingShares may be > 0, this appears to be expected behavior
-        }
     }
+
+}
+
+contract testRedeemFailureTests is BaseTest {
+
+    function test_redeem_moreThanBalance() public {
+        uint256 depositAmount = 1000 * 1e18;
+
+        vm.startPrank(alice);
+        spk.approve(address(sSpk), depositAmount);
+        ( , uint256 mintedShares ) = sSpk.deposit(alice, depositAmount);
+
+        // Try to redeem more shares than owned
+        uint256 excessShares = mintedShares + 1;
+        vm.expectRevert("TooMuchRedeem()");
+        sSpk.redeem(alice, excessShares);
+
+        vm.stopPrank();
+    }
+
+    function test_redeem_zeroShares() public {
+        uint256 depositAmount = 1000 * 1e18;
+
+        vm.startPrank(alice);
+        spk.approve(address(sSpk), depositAmount);
+        sSpk.deposit(alice, depositAmount);
+
+        vm.expectRevert("InsufficientRedemption()");
+        sSpk.redeem(alice, 0);
+        vm.stopPrank();
+    }
+
+}
+
+contract testRedeemSuccessTests is BaseTest {
 
     function test_RedeemShares() public {
         uint256 depositAmount = 1000 * 1e18;
 
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
-        (uint256 depositedAmount, uint256 mintedShares) = sSpk.deposit(alice, depositAmount);
+        ( , uint256 mintedShares ) = sSpk.deposit(alice, depositAmount);
 
         // Redeem half the shares
-        uint256 redeemShares = mintedShares / 2;
+        uint256 currentEpoch        = sSpk.currentEpoch();
         uint256 initialActiveShares = sSpk.balanceOf(alice);
-        uint256 currentEpoch = sSpk.currentEpoch();
+        uint256 redeemShares        = mintedShares / 2;
 
         // Calculate expected assets based on current share price
         // Using totalStake() (total assets) and totalSupply() (total shares)
-        uint256 totalAssets = sSpk.totalStake();
-        uint256 totalShares = sSpk.totalSupply();
+        uint256 totalAssets    = sSpk.totalStake();
+        uint256 totalShares    = sSpk.totalSupply();
         uint256 expectedAssets = (redeemShares * totalAssets) / totalShares;
 
         (uint256 withdrawnAssets, uint256 redeemWithdrawalShares) = sSpk.redeem(alice, redeemShares);
@@ -311,45 +488,16 @@ contract DepositWithdrawTest is BaseTest {
         assertEq(redeemWithdrawalShares, withdrawnAssets, "Withdrawal shares should equal withdrawn assets");
     }
 
-    function test_RedeemMoreThanBalance() public {
+}
+
+contract testVaultTokenTest is BaseTest {
+
+    function test_vaultToken_transferability() public {
         uint256 depositAmount = 1000 * 1e18;
 
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
-        (uint256 depositedAmount, uint256 mintedShares) = sSpk.deposit(alice, depositAmount);
-
-        // Try to redeem more shares than owned
-        uint256 excessShares = mintedShares + 1;
-        vm.expectRevert("TooMuchRedeem()");
-        sSpk.redeem(alice, excessShares);
-
-        vm.stopPrank();
-    }
-
-    function test_VaultStakeAndSlashableBalance() public {
-        // Test stake-related functions
-        uint256 depositAmount = 1000 * 1e18;
-
-        vm.startPrank(alice);
-        spk.approve(address(sSpk), depositAmount);
-        sSpk.deposit(alice, depositAmount);
-        vm.stopPrank();
-
-        // Check total stake
-        uint256 totalStake = sSpk.totalStake();
-        assertGt(totalStake, 0, "No total stake");
-
-        // Check slashable balance
-        uint256 slashableBalance = sSpk.slashableBalanceOf(alice);
-        assertGt(slashableBalance, 0, "No slashable balance for Alice");
-    }
-
-    function test_VaultTokenTransferability() public {
-        uint256 depositAmount = 1000 * 1e18;
-
-        vm.startPrank(alice);
-        spk.approve(address(sSpk), depositAmount);
-        (uint256 depositedAmount, uint256 mintedShares) = sSpk.deposit(alice, depositAmount);
+        ( , uint256 mintedShares ) = sSpk.deposit(alice, depositAmount);
         vm.stopPrank();
 
         // Check if Alice can transfer her sSPK tokens to Bob
@@ -365,12 +513,12 @@ contract DepositWithdrawTest is BaseTest {
         assertEq(sSpk.balanceOf(alice), mintedShares - transferAmount, "Alice should have remaining sSPK tokens");
     }
 
-    function test_VaultTokenApprovalAndTransferFrom() public {
+    function test_vaultToken_approvalAndTransferFrom() public {
         uint256 depositAmount = 1000 * 1e18;
 
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
-        (uint256 depositedAmount, uint256 mintedShares) = sSpk.deposit(alice, depositAmount);
+        ( , uint256 mintedShares ) = sSpk.deposit(alice, depositAmount);
 
         // Alice approves Bob to spend her sSPK tokens
         uint256 approvalAmount = mintedShares / 2;
@@ -383,8 +531,9 @@ contract DepositWithdrawTest is BaseTest {
         vm.stopPrank();
 
         // Verify transfer worked
-        assertEq(sSpk.balanceOf(charlie), approvalAmount, "Charlie should have received sSPK tokens");
-        assertEq(sSpk.balanceOf(alice), mintedShares - approvalAmount, "Alice should have remaining sSPK tokens");
-        assertEq(sSpk.allowance(alice, bob), 0, "Allowance should be used up");
+        assertEq(sSpk.balanceOf(charlie),    approvalAmount,                "Charlie should have received sSPK tokens");
+        assertEq(sSpk.balanceOf(alice),      mintedShares - approvalAmount, "Alice should have remaining sSPK tokens");
+        assertEq(sSpk.allowance(alice, bob), 0,                             "Allowance should be used up");
     }
+
 }
