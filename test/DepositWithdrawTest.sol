@@ -5,7 +5,7 @@ import "./BaseTest.sol";
 
 contract TestDepositFailureTests is BaseTest {
 
-    function test_deposit_insufficientBalance() public {
+    function test_deposit_insufficientBalanceBoundary() public {
         uint256 aliceBalance  = spk.balanceOf(alice);
         uint256 depositAmount = aliceBalance + 1; // More than Alice has
 
@@ -15,6 +15,12 @@ contract TestDepositFailureTests is BaseTest {
         vm.expectRevert("SDAO/insufficient-balance");
         sSpk.deposit(alice, depositAmount);
 
+        sSpk.deposit(alice, aliceBalance);
+
+        assertEq(spk.balanceOf(alice),  0,            "SPK not transferred");
+        assertEq(sSpk.balanceOf(alice), aliceBalance, "sSPK not minted");
+        assertEq(sSpk.totalSupply(),    aliceBalance, "Total supply not updated");
+
         vm.stopPrank();
     }
 
@@ -23,14 +29,6 @@ contract TestDepositFailureTests is BaseTest {
         spk.approve(address(sSpk), 1000 * 1e18);
         vm.expectRevert("InvalidOnBehalfOf()");
         sSpk.deposit(address(0), 1000 * 1e18);
-        vm.stopPrank();
-    }
-
-    function test_deposit_zeroAmount() public {
-        vm.startPrank(alice);
-        spk.approve(address(sSpk), 0);
-        vm.expectRevert("InsufficientDeposit()");
-        sSpk.deposit(alice, 0);
         vm.stopPrank();
     }
 
@@ -46,6 +44,14 @@ contract TestDepositFailureTests is BaseTest {
         spk.approve(address(sSpk), depositAmount);
         vm.expectRevert("NotWhitelistedDepositor()");
         sSpk.deposit(bob, depositAmount);
+        vm.stopPrank();
+    }
+
+    function test_deposit_zeroAmount() public {
+        vm.startPrank(alice);
+        spk.approve(address(sSpk), 0);
+        vm.expectRevert("InsufficientDeposit()");
+        sSpk.deposit(alice, 0);
         vm.stopPrank();
     }
 
@@ -65,12 +71,12 @@ contract TestDepositFailureTests is BaseTest {
         sSpk.deposit(alice, depositLimit);
         vm.stopPrank();
 
-        // Bob tries to deposit more (should fail)
-        uint256 excessAmount = 1 * 1e18;
-        vm.startPrank(bob);
+        // Alice tries to deposit more (should fail)
+        uint256 excessAmount = 1;
+        vm.startPrank(alice);
         spk.approve(address(sSpk), excessAmount);
         vm.expectRevert("DepositLimitReached()");
-        sSpk.deposit(bob, excessAmount);
+        sSpk.deposit(alice, excessAmount);
         vm.stopPrank();
     }
 
@@ -90,13 +96,13 @@ contract TestDepositSuccessTests is BaseTest {
 
         // Approve and deposit
         spk.approve(address(sSpk), depositAmount);
-        (uint256 depositedAmount, uint256 mintedShares) = sSpk.deposit(alice, depositAmount);
+        ( uint256 depositedAmount, uint256 mintedShares ) = sSpk.deposit(alice, depositAmount);
 
         vm.stopPrank();
 
         // Verify deposit results
         assertEq(depositedAmount, depositAmount, "Incorrect deposited amount");
-        assertGt(mintedShares, 0, "No shares minted");
+        assertEq(mintedShares,    depositAmount, "No shares minted");
 
         // Check balances after deposit
         assertEq(spk.balanceOf(alice),  initialSPKBalance  - depositAmount, "SPK not transferred");
@@ -110,18 +116,18 @@ contract TestDepositSuccessTests is BaseTest {
         // Alice deposits
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
-        (uint256 aliceDeposited, uint256 aliceShares) = sSpk.deposit(alice, depositAmount);
+        (uint256 depositAmount1, uint256 aliceShares) = sSpk.deposit(alice, depositAmount);
         vm.stopPrank();
 
         // Bob deposits
         vm.startPrank(bob);
         spk.approve(address(sSpk), depositAmount);
-        (uint256 bobDeposited, uint256 bobShares) = sSpk.deposit(bob, depositAmount);
+        (uint256 depositAmount2, uint256 bobShares) = sSpk.deposit(bob, depositAmount);
         vm.stopPrank();
 
         // Verify both deposits
-        assertEq(aliceDeposited,        depositAmount, "Alice deposit amount incorrect");
-        assertEq(bobDeposited,          depositAmount, "Bob deposit amount incorrect");
+        assertEq(depositAmount1,        depositAmount, "Alice deposit amount incorrect");
+        assertEq(depositAmount2,        depositAmount, "Bob deposit amount incorrect");
         assertEq(sSpk.balanceOf(alice), aliceShares,   "Alice shares incorrect");
         assertEq(sSpk.balanceOf(bob),   bobShares,     "Bob shares incorrect");
     }
@@ -137,11 +143,12 @@ contract TestDepositSuccessTests is BaseTest {
 
         // Check total stake
         uint256 totalStake = sSpk.totalStake();
-        assertGt(totalStake, 0, "No total stake");
+
+        assertEq(totalStake, depositAmount, "Invalid total stake");
 
         // Check slashable balance
         uint256 slashableBalance = sSpk.slashableBalanceOf(alice);
-        assertGt(slashableBalance, 0, "No slashable balance for Alice");
+        assertEq(slashableBalance, depositAmount, "Invalid slashable balance for Alice");
     }
 
 }
@@ -165,7 +172,7 @@ contract TestWithdrawFailureTests is BaseTest {
         vm.stopPrank();
     }
 
-    function test_withdraw_tooMuchWithdraw() public {
+    function test_withdraw_tooMuchWithdrawBoundary() public {
         // First deposit
         uint256 depositAmount = 1000 * 1e18;
         vm.startPrank(alice);
@@ -181,7 +188,7 @@ contract TestWithdrawFailureTests is BaseTest {
 
 contract TestWithdrawSuccessTests is BaseTest {
 
-    function test_UserWithdrawal() public {
+    function test_withdraw() public {
         // First deposit
         uint256 depositAmount = 1000 * 1e18;
         vm.startPrank(alice);
@@ -198,8 +205,8 @@ contract TestWithdrawSuccessTests is BaseTest {
         vm.stopPrank();
 
         // Verify withdrawal initiation
-        assertGt(burnedShares,           0, "No shares burned");
-        assertGt(mintedWithdrawalShares, 0, "No withdrawal shares minted");
+        assertEq(burnedShares,           withdrawAmount, "No shares burned");
+        assertEq(mintedWithdrawalShares, withdrawAmount, "No withdrawal shares minted");
 
         assertEq(sSpk.balanceOf(alice), initialShares - burnedShares, "Active shares not burned");
 
@@ -219,7 +226,7 @@ contract TestClaimFailureTests is BaseTest {
         sSpk.claim(address(0), 1);
     }
 
-    function test_claim_beforeEpochDelay() public {
+    function test_claim_beforeEpochDelayBoundary() public {
         uint256 depositAmount = 1000 * 1e18;
 
         vm.startPrank(alice);
@@ -303,12 +310,14 @@ contract TestClaimSuccessTests is BaseTest {
         vm.prank(alice);
         uint256 claimedAmount = sSpk.claim(alice, currentEpoch + 1);
 
-        assertEq(claimedAmount, withdrawAmount, "Invalid claimed amount");
-        assertEq(spk.balanceOf(alice), aliceBalanceBefore + claimedAmount, "SPK not received");
+        assertEq(claimedAmount,         withdrawAmount,                     "Invalid claimed amount");
+        assertEq(spk.balanceOf(alice),  aliceBalanceBefore + claimedAmount, "SPK not received");
+        assertEq(sSpk.balanceOf(alice), depositAmount - withdrawAmount,     "Active shares not burned");
     }
 
 }
 
+// NOTE: All failure modes of _claim are captured in the above claim tests.
 contract TestClaimBatchFailureTests is BaseTest {
 
     function test_claimBatch_invalidRecipient() public {
@@ -337,6 +346,9 @@ contract TestClaimBatchSuccessTests is BaseTest {
     function test_claimBatch() public {
         // Step 0: Initialize epoch system with a deposit
         _initializeEpochSystem();
+
+        // Provide more realistic scenario where a user withdraws mid-epoch
+        skip(1 days);
 
         // Setup multiple withdrawals across different epochs
         uint256 depositAmount  = 3000 * 1e18;
@@ -369,7 +381,13 @@ contract TestClaimBatchSuccessTests is BaseTest {
         // Since we made 3 withdrawals across 3 epochs, the last one needs more time
         // Wait until all withdrawals are claimable (first one + 2 more epochs)
         uint256 allClaimableTime = firstClaimableTime + (2 * EPOCH_DURATION);
-        vm.warp(allClaimableTime + 1);
+
+        vm.warp(allClaimableTime - 1);
+        vm.expectRevert("InvalidEpoch()");
+        vm.prank(alice);
+        sSpk.claimBatch(alice, withdrawalEpochs);
+
+        vm.warp(allClaimableTime);
 
         // Batch claim
         uint256 aliceBalanceBefore = spk.balanceOf(alice);
@@ -377,7 +395,7 @@ contract TestClaimBatchSuccessTests is BaseTest {
         uint256 totalClaimed = sSpk.claimBatch(alice, withdrawalEpochs);
 
         // Verify batch claim
-        assertGt(totalClaimed, 0, "Nothing claimed in batch");
+        assertEq(totalClaimed,         1500e18,                           "Nothing claimed in batch");
         assertEq(spk.balanceOf(alice), aliceBalanceBefore + totalClaimed, "SPK not received from batch claim");
     }
 
@@ -385,7 +403,7 @@ contract TestClaimBatchSuccessTests is BaseTest {
 
 contract TestRedeemFailureTests is BaseTest {
 
-    function test_redeem_moreThanBalance() public {
+    function test_redeem_moreThanBalanceBoundary() public {
         uint256 depositAmount = 1000 * 1e18;
 
         vm.startPrank(alice);
@@ -416,7 +434,7 @@ contract TestRedeemFailureTests is BaseTest {
 
 contract TestRedeemSuccessTests is BaseTest {
 
-    function test_RedeemShares() public {
+    function test_redeem() public {
         uint256 depositAmount = 1000 * 1e18;
 
         vm.startPrank(alice);
@@ -439,11 +457,8 @@ contract TestRedeemSuccessTests is BaseTest {
         vm.stopPrank();
 
         // Verify redeem results with proper mathematical validation
-        assertGt(withdrawnAssets,        0, "No assets withdrawn");
-        assertGt(redeemWithdrawalShares, 0, "No withdrawal shares minted");
-
-        // Validate mathematical correctness of redemption
-        assertEq(withdrawnAssets, expectedAssets, "Incorrect asset amount for redeemed shares");
+        assertEq(withdrawnAssets,        expectedAssets, "No assets withdrawn");
+        assertEq(redeemWithdrawalShares, redeemShares,   "No withdrawal shares minted");
 
         // Verify active shares were burned correctly
         assertEq(sSpk.balanceOf(alice), initialActiveShares - redeemShares, "Active shares not burned correctly");
