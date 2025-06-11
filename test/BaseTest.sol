@@ -69,10 +69,10 @@ abstract contract BaseTest is Test {
     function _setupTestUsers() internal {
         // TODO: Deal
         // Use the helper function to give tokens to test users
-        _giveTokens(alice,    10000 * 1e18);   // 10k SPK
-        _giveTokens(bob,      10000 * 1e18);     // 10k SPK
-        _giveTokens(charlie,  10000 * 1e18); // 10k SPK
-        _giveTokens(attacker, 10000 * 1e18); // 10k SPK for attack tests
+        _giveTokens(alice,    10000e18);   // 10k SPK
+        _giveTokens(bob,      10000e18);     // 10k SPK
+        _giveTokens(charlie,  10000e18); // 10k SPK
+        _giveTokens(attacker, 10000e18); // 10k SPK for attack tests
     }
 
     // ============ HELPER FUNCTIONS ============
@@ -84,11 +84,11 @@ abstract contract BaseTest is Test {
     function _initializeEpochSystem() internal {
         // Make a small deposit to start the epoch system
         address initialDepositor = makeAddr("epochInitializer");
-        _giveTokens(initialDepositor, 1 * 1e18); // 1 SPK
+        _giveTokens(initialDepositor, 1e18); // 1 SPK
 
         vm.startPrank(initialDepositor);
-        spk.approve(address(sSpk), 1 * 1e18);
-        sSpk.deposit(initialDepositor, 1 * 1e18);
+        spk.approve(address(sSpk), 1e18);
+        sSpk.deposit(initialDepositor, 1e18);
         vm.stopPrank();
     }
 

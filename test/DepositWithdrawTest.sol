@@ -26,9 +26,9 @@ contract TestDepositFailureTests is BaseTest {
 
     function test_deposit_invalidOnBehalfOf() public {
         vm.startPrank(alice);
-        spk.approve(address(sSpk), 1000 * 1e18);
+        spk.approve(address(sSpk), 1000e18);
         vm.expectRevert("InvalidOnBehalfOf()");
-        sSpk.deposit(address(0), 1000 * 1e18);
+        sSpk.deposit(address(0), 1000e18);
         vm.stopPrank();
     }
 
@@ -37,7 +37,7 @@ contract TestDepositFailureTests is BaseTest {
         vm.prank(SPARK_GOVERNANCE);
         sSpk.setDepositWhitelist(true);
 
-        uint256 depositAmount = 100 * 1e18;
+        uint256 depositAmount = 100e18;
 
         // Bob (not whitelisted) should be blocked
         vm.startPrank(bob);
@@ -56,7 +56,7 @@ contract TestDepositFailureTests is BaseTest {
     }
 
     function test_deposit_depositLimitReached() public {
-        uint256 depositLimit = 1000 * 1e18; // 1k SPK limit
+        uint256 depositLimit = 1000e18; // 1k SPK limit
 
         // Set up deposit limit
         vm.prank(SPARK_GOVERNANCE);
@@ -85,7 +85,7 @@ contract TestDepositFailureTests is BaseTest {
 contract TestDepositSuccessTests is BaseTest {
 
      function test_userDeposit() public {
-        uint256 depositAmount = 1000 * 1e18; // 1000 SPK
+        uint256 depositAmount = 1000e18; // 1000 SPK
 
         vm.startPrank(alice);
 
@@ -111,7 +111,7 @@ contract TestDepositSuccessTests is BaseTest {
     }
 
     function test_multipleUserDeposits() public {
-        uint256 depositAmount = 500 * 1e18; // 500 SPK each
+        uint256 depositAmount = 500e18; // 500 SPK each
 
         // Alice deposits
         vm.startPrank(alice);
@@ -134,7 +134,7 @@ contract TestDepositSuccessTests is BaseTest {
 
     function test_deposit_VaultStakeAndSlashableBalance() public {
         // Test stake-related functions
-        uint256 depositAmount = 1000 * 1e18;
+        uint256 depositAmount = 1000e18;
 
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
@@ -161,7 +161,7 @@ contract TestWithdrawFailureTests is BaseTest {
     }
 
     function test_withdraw_zeroAmount() public {
-        uint256 depositAmount = 1000 * 1e18;
+        uint256 depositAmount = 1000e18;
 
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
@@ -174,7 +174,7 @@ contract TestWithdrawFailureTests is BaseTest {
 
     function test_withdraw_tooMuchWithdrawBoundary() public {
         // First deposit
-        uint256 depositAmount = 1000 * 1e18;
+        uint256 depositAmount = 1000e18;
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
         sSpk.deposit(alice, depositAmount);
@@ -190,14 +190,14 @@ contract TestWithdrawSuccessTests is BaseTest {
 
     function test_withdraw() public {
         // First deposit
-        uint256 depositAmount = 1000 * 1e18;
+        uint256 depositAmount = 1000e18;
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
         sSpk.deposit(alice, depositAmount);
 
         // Record initial state
         uint256 initialShares = sSpk.balanceOf(alice);
-        uint256 withdrawAmount = 500 * 1e18; // Withdraw half
+        uint256 withdrawAmount = 500e18; // Withdraw half
 
         // Initiate withdrawal
         (uint256 burnedShares, uint256 mintedWithdrawalShares) = sSpk.withdraw(alice, withdrawAmount);
@@ -227,14 +227,14 @@ contract TestClaimFailureTests is BaseTest {
     }
 
     function test_claim_beforeEpochDelayBoundary() public {
-        uint256 depositAmount = 1000 * 1e18;
+        uint256 depositAmount = 1000e18;
 
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
         sSpk.deposit(alice, depositAmount);
 
         uint256 currentEpoch = sSpk.currentEpoch();
-        sSpk.withdraw(alice, 500 * 1e18);
+        sSpk.withdraw(alice, 500e18);
 
         // Try to claim immediately (should fail)
         vm.expectRevert("InvalidEpoch()");
@@ -247,8 +247,8 @@ contract TestClaimFailureTests is BaseTest {
         _initializeEpochSystem();
 
         // Setup: Deposit and withdraw
-        uint256 depositAmount  = 2000 * 1e18;
-        uint256 withdrawAmount = 1000 * 1e18;
+        uint256 depositAmount  = 2000e18;
+        uint256 withdrawAmount = 1000e18;
 
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
@@ -284,8 +284,8 @@ contract TestClaimSuccessTests is BaseTest {
         _initializeEpochSystem();
 
         // Setup: Deposit and withdraw
-        uint256 depositAmount  = 2000 * 1e18;
-        uint256 withdrawAmount = 1000 * 1e18;
+        uint256 depositAmount  = 2000e18;
+        uint256 withdrawAmount = 1000e18;
 
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
@@ -351,8 +351,8 @@ contract TestClaimBatchSuccessTests is BaseTest {
         skip(1 days);
 
         // Setup multiple withdrawals across different epochs
-        uint256 depositAmount  = 3000 * 1e18;
-        uint256 withdrawAmount = 500 * 1e18;
+        uint256 depositAmount  = 3000e18;
+        uint256 withdrawAmount = 500e18;
 
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
@@ -404,7 +404,7 @@ contract TestClaimBatchSuccessTests is BaseTest {
 contract TestRedeemFailureTests is BaseTest {
 
     function test_redeem_moreThanBalanceBoundary() public {
-        uint256 depositAmount = 1000 * 1e18;
+        uint256 depositAmount = 1000e18;
 
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
@@ -419,7 +419,7 @@ contract TestRedeemFailureTests is BaseTest {
     }
 
     function test_redeem_zeroShares() public {
-        uint256 depositAmount = 1000 * 1e18;
+        uint256 depositAmount = 1000e18;
 
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
@@ -435,7 +435,7 @@ contract TestRedeemFailureTests is BaseTest {
 contract TestRedeemSuccessTests is BaseTest {
 
     function test_redeem() public {
-        uint256 depositAmount = 1000 * 1e18;
+        uint256 depositAmount = 1000e18;
 
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
@@ -477,7 +477,7 @@ contract TestRedeemSuccessTests is BaseTest {
 contract TestVaultTokenTest is BaseTest {
 
     function test_vaultToken_transferability() public {
-        uint256 depositAmount = 1000 * 1e18;
+        uint256 depositAmount = 1000e18;
 
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
@@ -498,7 +498,7 @@ contract TestVaultTokenTest is BaseTest {
     }
 
     function test_vaultToken_approvalAndTransferFrom() public {
-        uint256 depositAmount = 1000 * 1e18;
+        uint256 depositAmount = 1000e18;
 
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);

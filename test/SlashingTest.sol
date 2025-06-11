@@ -8,20 +8,20 @@ contract SlashingTest is BaseTest {
     function test_UnauthorizedCannotCallOnSlash() public {
         vm.expectRevert("NotSlasher()");
         vm.prank(attacker);
-        sSpk.onSlash(1000 * 1e18, uint48(block.timestamp));
+        sSpk.onSlash(1000e18, uint48(block.timestamp));
     }
 
     function test_OnlySlasherCanSlash() public {
         // Initialize the system and add some deposits for slashing
         _initializeEpochSystem();
 
-        uint256 depositAmount = 5000 * 1e18;
+        uint256 depositAmount = 5000e18;
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
         sSpk.deposit(alice, depositAmount);
         vm.stopPrank();
 
-        uint256 slashAmount = 500 * 1e18; // 10% slash
+        uint256 slashAmount = 500e18; // 10% slash
         uint48 captureTimestamp = uint48(block.timestamp);
 
         // Verify the slasher address is correctly set
@@ -67,7 +67,7 @@ contract SlashingTest is BaseTest {
         _initializeEpochSystem();
 
         // Setup: Alice deposits into sSpk
-        uint256 depositAmount = 10000 * 1e18; // 10k SPK
+        uint256 depositAmount = 10000e18; // 10k SPK
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
         sSpk.deposit(alice, depositAmount);
@@ -79,7 +79,7 @@ contract SlashingTest is BaseTest {
         uint256 totalStakeBefore = sSpk.totalStake();
 
         // Simulate a real slashing event
-        uint256 slashAmount = 1000 * 1e18; // Slash 1k SPK (10% of deposit)
+        uint256 slashAmount = 1000e18; // Slash 1k SPK (10% of deposit)
         uint48 captureTimestamp = uint48(block.timestamp);
 
         // Only the veto slasher can perform slashing
@@ -109,13 +109,13 @@ contract SlashingTest is BaseTest {
         _initializeEpochSystem();
 
         // Give Alice some tokens to deposit so slashing has an effect
-        uint256 depositAmount = 2000 * 1e18;
+        uint256 depositAmount = 2000e18;
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
         sSpk.deposit(alice, depositAmount);
         vm.stopPrank();
 
-        uint256 slashAmount = 100 * 1e18;
+        uint256 slashAmount = 100e18;
         uint48 captureTimestamp = uint48(block.timestamp);
 
         // Test that various unauthorized parties cannot slash
@@ -160,7 +160,7 @@ contract SlashingTest is BaseTest {
         // Initialize and set up deposits
         _initializeEpochSystem();
 
-        uint256 depositAmount = 5000 * 1e18;
+        uint256 depositAmount = 5000e18;
 
         vm.startPrank(alice);
 
@@ -168,7 +168,7 @@ contract SlashingTest is BaseTest {
         sSpk.deposit(alice, depositAmount);
 
         // Alice initiates withdrawal before slashing
-        uint256 withdrawAmount    = 2000 * 1e18;
+        uint256 withdrawAmount    = 2000e18;
         uint256 currentEpoch      = sSpk.currentEpoch();
         uint256 currentEpochStart = sSpk.currentEpochStart();
 
@@ -182,7 +182,7 @@ contract SlashingTest is BaseTest {
         uint256 sSpkBalanceBefore = spk.balanceOf(address(sSpk));
 
         // Slashing occurs after withdrawal but before claim
-        uint256 slashAmount = 1000 * 1e18; // 20% of original deposit
+        uint256 slashAmount = 1000e18; // 20% of original deposit
         vm.prank(VETO_SLASHER);
         uint256 actualSlashedAmount = sSpk.onSlash(slashAmount, uint48(block.timestamp));
 
@@ -225,10 +225,10 @@ contract SlashingTest is BaseTest {
         _initializeEpochSystem();
 
         // Give Alice extra tokens for this specific test
-        _giveTokens(alice, 100000 * 1e18); // Extra 100k SPK for slashing operations
+        _giveTokens(alice, 100000e18); // Extra 100k SPK for slashing operations
 
         // Setup very large deposit to handle multiple slashes
-        uint256 depositAmount = 50000 * 1e18; // 50k SPK
+        uint256 depositAmount = 50000e18; // 50k SPK
         vm.startPrank(alice);
 
         spk.approve(address(sSpk), depositAmount);
@@ -239,7 +239,7 @@ contract SlashingTest is BaseTest {
         uint256 initialVaultBalance = spk.balanceOf(address(sSpk));
 
         // First slashing event - small amount
-        uint256 firstSlash = 50 * 1e18; // 50 SPK
+        uint256 firstSlash = 50e18; // 50 SPK
         vm.prank(VETO_SLASHER);
 
         uint256 firstSlashedAmount         = sSpk.onSlash(firstSlash, uint48(block.timestamp));
@@ -255,7 +255,7 @@ contract SlashingTest is BaseTest {
         vm.warp(block.timestamp + 1 days);
 
         // Second slashing event - small amount
-        uint256 secondSlash = 25 * 1e18; // 25 SPK
+        uint256 secondSlash = 25e18; // 25 SPK
         vm.prank(VETO_SLASHER);
 
         uint256 secondSlashedAmount         = sSpk.onSlash(secondSlash, uint48(block.timestamp));
@@ -277,7 +277,7 @@ contract SlashingTest is BaseTest {
         // Initialize system and add some stake to make the test meaningful
         _initializeEpochSystem();
 
-        uint256 depositAmount = 1000 * 1e18;
+        uint256 depositAmount = 1000e18;
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
         sSpk.deposit(alice, depositAmount);
@@ -304,7 +304,7 @@ contract SlashingTest is BaseTest {
         // Initialize system and add stake for meaningful slashing
         _initializeEpochSystem();
 
-        uint256 depositAmount = 2000 * 1e18;
+        uint256 depositAmount = 2000e18;
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
         sSpk.deposit(alice, depositAmount);
@@ -316,7 +316,7 @@ contract SlashingTest is BaseTest {
 
         // Test edge case: slashing with future timestamp
         uint48 futureTimestamp = uint48(block.timestamp + 1 days);
-        uint256 slashAmount = 100 * 1e18;
+        uint256 slashAmount = 100e18;
 
         vm.prank(VETO_SLASHER);
         uint256 actualSlashedAmount = sSpk.onSlash(slashAmount, futureTimestamp);
@@ -335,7 +335,7 @@ contract SlashingTest is BaseTest {
         _initializeEpochSystem();
 
         // Setup: Alice deposits into sSpk
-        uint256 depositAmount = 10000 * 1e18; // 10k SPK
+        uint256 depositAmount = 10000e18; // 10k SPK
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
         sSpk.deposit(alice, depositAmount);
@@ -348,7 +348,7 @@ contract SlashingTest is BaseTest {
         uint256 totalStakeBefore        = sSpk.totalStake();
 
         // Perform slashing
-        uint256 slashAmount = 1000 * 1e18; // Slash 1k SPK
+        uint256 slashAmount = 1000e18; // Slash 1k SPK
 
         uint48 captureTimestamp = uint48(block.timestamp);
 
@@ -391,7 +391,7 @@ contract SlashingTest is BaseTest {
         // Test that demonstrates the 3-day veto window concept
         _initializeEpochSystem();
 
-        uint256 depositAmount = 5000 * 1e18;
+        uint256 depositAmount = 5000e18;
 
         vm.startPrank(alice);
 
@@ -404,7 +404,7 @@ contract SlashingTest is BaseTest {
 
         // Slashing occurs at time T
         uint256 slashTime   = block.timestamp;
-        uint256 slashAmount = 500 * 1e18;
+        uint256 slashAmount = 500e18;
 
         vm.prank(VETO_SLASHER);
         sSpk.onSlash(slashAmount, uint48(slashTime));
@@ -563,8 +563,8 @@ contract SlashingTest is BaseTest {
         _initializeEpochSystem();
 
         // Setup users with deposits
-        uint256 aliceDeposit = 6000 * 1e18;  // 6k SPK
-        uint256 bobDeposit   = 4000 * 1e18;  // 4k SPK
+        uint256 aliceDeposit = 6000e18;  // 6k SPK
+        uint256 bobDeposit   = 4000e18;  // 4k SPK
 
         // Alice deposits
         vm.startPrank(alice);
@@ -615,8 +615,8 @@ contract SlashingTest is BaseTest {
         _initializeEpochSystem();
 
         // Setup: Multiple users with different deposit amounts
-        uint256 aliceDeposit = 3000 * 1e18;  // 3k SPK
-        uint256 bobDeposit   = 7000 * 1e18;    // 7k SPK
+        uint256 aliceDeposit = 3000e18;  // 3k SPK
+        uint256 bobDeposit   = 7000e18;    // 7k SPK
 
         // Alice deposits
         vm.startPrank(alice);
@@ -631,8 +631,8 @@ contract SlashingTest is BaseTest {
         vm.stopPrank();
 
         // Both users initiate withdrawals
-        uint256 aliceWithdrawAmount = 1500 * 1e18; // 50% of Alice's deposit
-        uint256 bobWithdrawAmount   = 2100 * 1e18;   // 30% of Bob's deposit
+        uint256 aliceWithdrawAmount = 1500e18; // 50% of Alice's deposit
+        uint256 bobWithdrawAmount   = 2100e18;   // 30% of Bob's deposit
 
         uint256 currentEpoch = sSpk.currentEpoch();
         uint256 currentEpochStart = sSpk.currentEpochStart();
