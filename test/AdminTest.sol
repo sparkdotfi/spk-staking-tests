@@ -203,7 +203,7 @@ contract SetDepositorWhitelistStatusSuccessTests is BaseTest {
 
 }
 
-contract TestBurnerRouterSetGlobalReceiverFailureTests is BaseTest {
+contract BurnerRouterSetGlobalReceiverFailureTests is BaseTest {
 
     function test_setGlobalReceiver_notRole() public {
         vm.expectRevert(
@@ -229,20 +229,59 @@ contract TestBurnerRouterSetGlobalReceiverFailureTests is BaseTest {
         vm.prank(SPARK_GOVERNANCE);
         burnerRouter.setGlobalReceiver(bob);
 
-        vm.warp(block.timestamp + BURNER_DELAY + 1);
+        ( address pendingGlobalReceiver, ) = burnerRouter.pendingGlobalReceiver();
 
-        // Now accept the receiver change
-        burnerRouter.acceptGlobalReceiver();
-
-        // Verify the receiver has been changed
-        assertEq(burnerRouter.globalReceiver(), bob, "Receiver should be updated after delay");
+        assertEq(pendingGlobalReceiver, bob, "Global receiver should be updated after delay");
     }
 
 }
 
-contract TestBurnerRouterSetGlobalReceiverSuccessTests is BaseTest {
+contract BurnerRouterSetGlobalReceiverSuccessTests is BaseTest {
 
     function test_setGlobalReceiver() public {
+        address currentReceiver = burnerRouter.globalReceiver();
+        assertEq(currentReceiver, SPARK_GOVERNANCE, "Current receiver should be Spark Governance");
+
+        address newReceiver = makeAddr("newReceiver");
+
+        vm.prank(SPARK_GOVERNANCE);
+        burnerRouter.setGlobalReceiver(newReceiver);
+
+        // Current receiver should still be the old one
+        assertEq(burnerRouter.globalReceiver(), currentReceiver, "Receiver should not change immediately");
+
+        ( address pendingGlobalReceiver, ) = burnerRouter.pendingGlobalReceiver();
+
+        assertEq(pendingGlobalReceiver, newReceiver, "Global receiver should be updated after delay");
+    }
+
+}
+
+contract BurnerRouterAcceptGlobalReceiverFailureTests is BaseTest {
+
+    function test_acceptGlobalReceiver_notReady() public {
+        vm.prank(SPARK_GOVERNANCE);
+        burnerRouter.setGlobalReceiver(alice);
+
+        vm.warp(block.timestamp + BURNER_DELAY - 1);
+
+        vm.expectRevert("NotReady()");
+        burnerRouter.acceptGlobalReceiver();
+
+        // Fast forward past the delay period
+        skip(1 seconds);
+
+        // Now accept the receiver change
+        burnerRouter.acceptGlobalReceiver();
+
+        assertEq(burnerRouter.globalReceiver(), alice, "Receiver should be updated after delay");
+    }
+
+}
+
+contract BurnerRouterAcceptGlobalReceiverSuccessTests is BaseTest {
+
+    function test_acceptGlobalReceiver() public {
         address currentReceiver = burnerRouter.globalReceiver();
         assertEq(currentReceiver, SPARK_GOVERNANCE, "Current receiver should be Spark Governance");
 
@@ -271,7 +310,7 @@ contract TestBurnerRouterSetGlobalReceiverSuccessTests is BaseTest {
 
 }
 
-contract TestBurnerRouterOwnershipTest is BaseTest {
+contract BurnerRouterOwnershipTest is BaseTest {
 
     function test_BurnerRouterOwnership() public view {
         // Test that Spark Governance is the actual owner of the burner router
@@ -281,7 +320,7 @@ contract TestBurnerRouterOwnershipTest is BaseTest {
 
 }
 
-contract TestBurnerRouterSetDelayFailureTests is BaseTest {
+contract BurnerRouterSetDelayFailureTests is BaseTest {
 
     function test_setDelay_notRole() public {
         vm.expectRevert(
@@ -320,7 +359,7 @@ contract TestBurnerRouterSetDelayFailureTests is BaseTest {
 
 }
 
-contract TestBurnerRouterSetDelaySuccessTests is BaseTest {
+contract BurnerRouterSetDelaySuccessTests is BaseTest {
 
     function test_setDelay() public {
         uint48 newDelay = 15 days; // Change from 31 days to 15 days
@@ -335,21 +374,30 @@ contract TestBurnerRouterSetDelaySuccessTests is BaseTest {
 
 }
 
-contract TestBurnerRouterAcceptDelayFailureTests is BaseTest {
+contract BurnerRouterAcceptDelayFailureTests is BaseTest {
 
-    function test_setDelay_notReady() public {
-        uint48 newDelay = 15 days; // Change from 31 days to 15 days
+    function test_acceptDelay_notReady() public {
+        uint48 initialDelay = burnerRouter.delay();
+        uint48 newDelay     = 15 days;  // Change from 31 days to 15 days
 
         vm.prank(SPARK_GOVERNANCE);
         burnerRouter.setDelay(newDelay);
 
+        vm.warp(block.timestamp + initialDelay - 1);
+
         vm.expectRevert("NotReady()");
+        burnerRouter.acceptDelay();
+
+        // Fast forward past the delay period (initial delay)
+        skip(1 seconds);
+
+        // Now accept the delay change
         burnerRouter.acceptDelay();
     }
 
 }
 
-contract TestBurnerRouterAcceptDelaySuccessTests is BaseTest {
+contract BurnerRouterAcceptDelaySuccessTests is BaseTest {
 
     function test_acceptDelay() public {
         // Check initial delay (should be 31 days)
@@ -359,19 +407,19 @@ contract TestBurnerRouterAcceptDelaySuccessTests is BaseTest {
         // Test that owner (Spark Governance) can initiate delay change
         uint48 newDelay = 15 days; // Change from 31 days to 15 days
 
-        // Get the owner of the burner router to verify it's Spark Governance
-        address burnerOwner = OwnableUpgradeable(address(burnerRouter)).owner();
-
-        // Note: The actual owner might be a different address than SPARK_GOVERNANCE
-        // so we'll use the actual owner for the test
-        vm.prank(burnerOwner);
+        vm.prank(SPARK_GOVERNANCE);
         burnerRouter.setDelay(newDelay);
 
         // Check that delay is still the old value (change is pending)
         assertEq(burnerRouter.delay(), initialDelay, "Delay should still be old value while pending");
 
-        // Fast forward past the delay period (initial delay + 1)
-        vm.warp(block.timestamp + initialDelay + 1);
+        vm.warp(block.timestamp + initialDelay - 1);
+
+        vm.expectRevert("NotReady()");
+        burnerRouter.acceptDelay();
+
+        // Fast forward past the delay period (initial delay)
+        skip(1 seconds);
 
         // Now accept the delay change
         burnerRouter.acceptDelay();
@@ -382,7 +430,7 @@ contract TestBurnerRouterAcceptDelaySuccessTests is BaseTest {
 
 }
 
-contract TestBurnerRouterSetNetworkReceiverFailureTests is BaseTest {
+contract BurnerRouterSetNetworkReceiverFailureTests is BaseTest {
 
     function test_setNetworkReceiver_notRole() public {
         vm.expectRevert(
@@ -392,7 +440,7 @@ contract TestBurnerRouterSetNetworkReceiverFailureTests is BaseTest {
         burnerRouter.setNetworkReceiver(makeAddr("network"), alice);
     }
 
-    function test_setGlobalReceiver_alreadySet() public {
+    function test_setNetworkReceiver_alreadySet() public {
         address network = makeAddr("network");
 
         vm.prank(SPARK_GOVERNANCE);
@@ -409,24 +457,66 @@ contract TestBurnerRouterSetNetworkReceiverFailureTests is BaseTest {
         vm.prank(SPARK_GOVERNANCE);
         burnerRouter.setNetworkReceiver(network, bob);
 
-        vm.warp(block.timestamp + BURNER_DELAY + 1);
+        ( address pendingNetworkReceiver, ) = burnerRouter.pendingNetworkReceiver(network);
 
-        // Now accept the receiver change
-        burnerRouter.acceptNetworkReceiver(network);
-
-        // Verify the receiver has been changed
-        assertEq(burnerRouter.networkReceiver(network), bob, "Receiver should be updated after delay");
+        assertEq(pendingNetworkReceiver, bob, "Network receiver should be updated after delay");
     }
 
 }
 
-contract TestBurnerRouterSetNetworkReceiverSuccessTests is BaseTest {
+contract BurnerRouterSetNetworkReceiverSuccessTests is BaseTest {
 
     function test_setNetworkReceiver() public {
         address network = makeAddr("network");
 
         vm.prank(SPARK_GOVERNANCE);
         burnerRouter.setNetworkReceiver(network, alice);
+
+        ( address pendingNetworkReceiver, ) = burnerRouter.pendingNetworkReceiver(network);
+
+        assertEq(pendingNetworkReceiver, alice, "Network receiver should be updated after delay");
+    }
+
+}
+
+contract BurnerRouterAcceptNetworkReceiverFailureTests is BaseTest {
+
+    function test_acceptNetworkReceiver_notReady() public {
+        address network = makeAddr("network");
+
+        vm.prank(SPARK_GOVERNANCE);
+        burnerRouter.setNetworkReceiver(network, alice);
+
+        vm.warp(block.timestamp + BURNER_DELAY - 1);
+
+        vm.expectRevert("NotReady()");
+        burnerRouter.acceptNetworkReceiver(network);
+
+        // Fast forward past the delay period
+        skip(1 seconds);
+
+        // Now accept the receiver change
+        burnerRouter.acceptNetworkReceiver(network);
+
+        assertEq(burnerRouter.networkReceiver(network), alice, "Receiver should be updated after delay");
+    }
+
+}
+
+contract BurnerRouterAcceptNetworkReceiverSuccessTests is BaseTest {
+
+    function test_acceptNetworkReceiver() public {
+        address network = makeAddr("network");
+
+        address currentReceiver = burnerRouter.networkReceiver(network);
+
+        address newReceiver = makeAddr("newReceiver");
+
+        vm.prank(SPARK_GOVERNANCE);
+        burnerRouter.setNetworkReceiver(network, newReceiver);
+
+        // Current receiver should still be the old one
+        assertEq(burnerRouter.networkReceiver(network), currentReceiver, "Receiver should not change immediately");
 
         // Fast forward past the 31-day delay
         vm.warp(block.timestamp + BURNER_DELAY + 1);
@@ -435,12 +525,12 @@ contract TestBurnerRouterSetNetworkReceiverSuccessTests is BaseTest {
         burnerRouter.acceptNetworkReceiver(network);
 
         // Verify the receiver has been changed
-        assertEq(burnerRouter.networkReceiver(network), alice, "Receiver should be updated after delay");
+        assertEq(burnerRouter.networkReceiver(network), newReceiver, "Receiver should be updated after delay");
     }
 
 }
 
-contract TestBurnerRouterSetOperatorNetworkReceiverFailureTests is BaseTest {
+contract BurnerRouterSetOperatorNetworkReceiverFailureTests is BaseTest {
 
     function test_setOperatorNetworkReceiver_notRole() public {
         vm.expectRevert(
@@ -468,20 +558,57 @@ contract TestBurnerRouterSetOperatorNetworkReceiverFailureTests is BaseTest {
         vm.prank(SPARK_GOVERNANCE);
         burnerRouter.setOperatorNetworkReceiver(network, operator, bob);
 
-        vm.warp(block.timestamp + BURNER_DELAY + 1);
+        ( address pendingOperatorNetworkReceiver, ) = burnerRouter.pendingOperatorNetworkReceiver(network, operator);
 
-        // Now accept the receiver change
-        burnerRouter.acceptOperatorNetworkReceiver(network, operator);
-
-        // Verify the receiver has been changed
-        assertEq(burnerRouter.operatorNetworkReceiver(network, operator), bob, "Receiver should be updated after delay");
+        assertEq(pendingOperatorNetworkReceiver, bob, "Operator network receiver should be updated after delay");
     }
 
 }
 
-contract TestBurnerRouterSetOperatorNetworkReceiverSuccessTests is BaseTest {
+contract BurnerRouterSetOperatorNetworkReceiverSuccessTests is BaseTest {
 
     function test_setOperatorNetworkReceiver() public {
+        address network = makeAddr("network");
+        address operator = makeAddr("operator");
+
+        vm.prank(SPARK_GOVERNANCE);
+        burnerRouter.setOperatorNetworkReceiver(network, operator, alice);
+
+        ( address pendingOperatorNetworkReceiver, ) = burnerRouter.pendingOperatorNetworkReceiver(network, operator);
+
+        assertEq(pendingOperatorNetworkReceiver, alice, "Operator network receiver should be updated after delay");
+    }
+
+}
+
+contract BurnerRouterAcceptOperatorNetworkReceiverFailureTests is BaseTest {
+
+    function test_acceptOperatorNetworkReceiver_notReady() public {
+        address network = makeAddr("network");
+        address operator = makeAddr("operator");
+
+        vm.prank(SPARK_GOVERNANCE);
+        burnerRouter.setOperatorNetworkReceiver(network, operator, alice);
+
+        vm.warp(block.timestamp + BURNER_DELAY - 1);
+
+        vm.expectRevert("NotReady()");
+        burnerRouter.acceptOperatorNetworkReceiver(network, operator);
+
+        // Fast forward past the delay period
+        skip(1 seconds);
+
+        // Now accept the receiver change
+        burnerRouter.acceptOperatorNetworkReceiver(network, operator);
+
+        assertEq(burnerRouter.operatorNetworkReceiver(network, operator), alice, "Receiver should be updated after delay");
+    }
+
+}
+
+contract BurnerRouterAcceptOperatorNetworkReceiverSuccessTests is BaseTest {
+
+    function test_acceptOperatorNetworkReceiver() public {
         address network = makeAddr("network");
         address operator = makeAddr("operator");
 
