@@ -3,7 +3,7 @@ pragma solidity 0.8.25;
 
 import "./BaseTest.sol";
 
-contract testDepositFailureTests is BaseTest {
+contract TestDepositFailureTests is BaseTest {
 
     function test_deposit_insufficientBalance() public {
         uint256 aliceBalance  = spk.balanceOf(alice);
@@ -76,9 +76,9 @@ contract testDepositFailureTests is BaseTest {
 
 }
 
-contract testDepositSuccessTests is BaseTest {
+contract TestDepositSuccessTests is BaseTest {
 
-     function test_UserDeposit() public {
+     function test_userDeposit() public {
         uint256 depositAmount = 1000 * 1e18; // 1000 SPK
 
         vm.startPrank(alice);
@@ -104,7 +104,7 @@ contract testDepositSuccessTests is BaseTest {
         assertEq(sSpk.totalSupply(),    initialTotalSupply + mintedShares,  "Total supply not updated");
     }
 
-    function test_MultipleUserDeposits() public {
+    function test_multipleUserDeposits() public {
         uint256 depositAmount = 500 * 1e18; // 500 SPK each
 
         // Alice deposits
@@ -146,7 +146,7 @@ contract testDepositSuccessTests is BaseTest {
 
 }
 
-contract testWithdrawFailureTests is BaseTest {
+contract TestWithdrawFailureTests is BaseTest {
 
     function test_withdraw_invalidClaimer() public {
         vm.expectRevert("InvalidClaimer()");
@@ -179,7 +179,7 @@ contract testWithdrawFailureTests is BaseTest {
 
 }
 
-contract testWithdrawSuccessTests is BaseTest {
+contract TestWithdrawSuccessTests is BaseTest {
 
     function test_UserWithdrawal() public {
         // First deposit
@@ -211,7 +211,7 @@ contract testWithdrawSuccessTests is BaseTest {
 
 }
 
-contract testClaimFailureTests is BaseTest {
+contract TestClaimFailureTests is BaseTest {
 
     function test_claim_invalidRecipient() public {
         vm.expectRevert("InvalidRecipient()");
@@ -271,10 +271,9 @@ contract testClaimFailureTests is BaseTest {
 
 }
 
-contract testClaimSuccessTests is BaseTest {
+contract TestClaimSuccessTests is BaseTest {
 
-    function test_claimAfterEpochDelay() public {
-        // Step 0: Initialize epoch system with a deposit
+    function test_claim() public {
         _initializeEpochSystem();
 
         // Setup: Deposit and withdraw
@@ -298,49 +297,19 @@ contract testClaimSuccessTests is BaseTest {
         // Fast forward to when withdrawal becomes claimable
         vm.warp(claimableTime + 1); // +1 to be sure we're past the boundary
 
-        // Check what epoch we're in now
-        uint256 newCurrentEpoch = sSpk.currentEpoch();
-
-        // Record state before claim
         uint256 aliceBalanceBefore = spk.balanceOf(alice);
-        uint256 withdrawalEpoch    = currentEpoch + 1;
-        uint256 withdrawalShares   = sSpk.withdrawalsOf(withdrawalEpoch, alice);
 
-        // Only proceed if we have withdrawal shares
-        if (withdrawalShares > 0) {
-            // Claim withdrawal - wrap in try/catch to see if there's a revert
-            vm.prank(alice);
-            try sSpk.claim(alice, withdrawalEpoch) returns (uint256 claimedAmount) {
-                // Verify claim
-                assertGt(claimedAmount, 0, "Nothing claimed");
-                assertEq(spk.balanceOf(alice), aliceBalanceBefore + claimedAmount, "SPK not received");
+        // Claim withdrawal
+        vm.prank(alice);
+        uint256 claimedAmount = sSpk.claim(alice, currentEpoch + 1);
 
-                // Check if withdrawal was actually cleared
-                uint256 remainingShares = sSpk.withdrawalsOf(withdrawalEpoch, alice);
-                if (remainingShares != 0) {
-                    // Note: Withdrawal shares not cleared - this might be expected behavior
-                }
-            } catch Error(string memory) {
-                // Claim reverted
-                revert("Claim should not revert");
-            } catch (bytes memory) {
-                // Claim reverted with low level error
-                revert("Claim should not revert");
-            }
-        } else {
-            // Check other epochs
-            for (uint256 i = 1; i <= newCurrentEpoch + 1; i++) {
-                uint256 shares = sSpk.withdrawalsOf(i, alice);
-                if (shares > 0) {
-                    // Found withdrawal shares in a different epoch
-                }
-            }
-        }
+        assertEq(claimedAmount, withdrawAmount, "Invalid claimed amount");
+        assertEq(spk.balanceOf(alice), aliceBalanceBefore + claimedAmount, "SPK not received");
     }
 
 }
 
-contract testClaimBatchFailureTests is BaseTest {
+contract TestClaimBatchFailureTests is BaseTest {
 
     function test_claimBatch_invalidRecipient() public {
         _initializeEpochSystem();
@@ -363,7 +332,7 @@ contract testClaimBatchFailureTests is BaseTest {
 
 }
 
-contract testClaimBatchSuccessTests is BaseTest {
+contract TestClaimBatchSuccessTests is BaseTest {
 
     function test_claimBatch() public {
         // Step 0: Initialize epoch system with a deposit
@@ -414,7 +383,7 @@ contract testClaimBatchSuccessTests is BaseTest {
 
 }
 
-contract testRedeemFailureTests is BaseTest {
+contract TestRedeemFailureTests is BaseTest {
 
     function test_redeem_moreThanBalance() public {
         uint256 depositAmount = 1000 * 1e18;
@@ -445,7 +414,7 @@ contract testRedeemFailureTests is BaseTest {
 
 }
 
-contract testRedeemSuccessTests is BaseTest {
+contract TestRedeemSuccessTests is BaseTest {
 
     function test_RedeemShares() public {
         uint256 depositAmount = 1000 * 1e18;
@@ -490,7 +459,7 @@ contract testRedeemSuccessTests is BaseTest {
 
 }
 
-contract testVaultTokenTest is BaseTest {
+contract TestVaultTokenTest is BaseTest {
 
     function test_vaultToken_transferability() public {
         uint256 depositAmount = 1000 * 1e18;
