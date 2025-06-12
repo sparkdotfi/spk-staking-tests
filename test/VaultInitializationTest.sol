@@ -3,6 +3,10 @@ pragma solidity 0.8.25;
 
 import "./BaseTest.sol";
 
+import { VmSafe } from "forge-std/Vm.sol";
+
+interface INetworkDelegator is IAccessControl {}
+
 contract VaultInitializationTest is BaseTest {
 
     function test_VaultInitialization() public view {
@@ -124,4 +128,55 @@ contract VaultInitializationTest is BaseTest {
         assertEq(sameEpoch,      newCurrentEpoch,      "Epoch should not change when advancing within same epoch");
         assertEq(sameEpochStart, newCurrentEpochStart, "Epoch start should not change when advancing within same epoch");
     }
+
+    function test_networkDelegator_configuration() public view {
+        INetworkDelegator networkDelegator = INetworkDelegator(NETWORK_DELEGATOR);
+
+        // Test that Spark Governance has all required admin roles
+        // Use the standard OpenZeppelin DEFAULT_ADMIN_ROLE constant
+        bytes32 defaultAdminRole = 0x00; // DEFAULT_ADMIN_ROLE is bytes32(0)
+
+        // Define role constants based on OpenZeppelin AccessControl pattern
+        bytes32 setNetworkLimitRole          = keccak256("NETWORK_LIMIT_SET_ROLE");
+        bytes32 setOperatorNetworkSharesRole = keccak256("OPERATOR_NETWORK_SHARES_SET_ROLE");
+
+        assertTrue(networkDelegator.hasRole(defaultAdminRole, SPARK_GOVERNANCE),             "Missing DEFAULT_ADMIN_ROLE");
+        assertTrue(networkDelegator.hasRole(setNetworkLimitRole, SPARK_GOVERNANCE),          "Missing DEPOSIT_WHITELIST_SET_ROLE");
+        assertTrue(networkDelegator.hasRole(setOperatorNetworkSharesRole, SPARK_GOVERNANCE), "Missing DEPOSITOR_WHITELIST_ROLE");
+    }
+
+}
+
+contract HistoricalLogsTest is BaseTest {
+
+    // event sig hashes
+    bytes32 private constant SET_NETWORK_LIMIT_SIG =
+        keccak256("SetNetworkLimit(bytes32,uint256)");
+    bytes32 private constant SET_OPERATOR_SHARES_SIG =
+        keccak256("SetOperatorNetworkShares(bytes32,address,uint256)");
+
+    function test_noConfigEventsInHistory() public {
+        // fetch *all* logs from deploymentBlock → latest
+        uint256 deploymentBlock = 22624651;
+        VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
+            deploymentBlock,
+            block.number,
+            NETWORK_DELEGATOR,
+            new bytes32[](0)
+        );
+
+        // scan them for our forbidden event signatures
+        for (uint i = 0; i < allLogs.length; i++) {
+            bytes32 sig = allLogs[i].topics[0];
+            assertTrue(
+                sig != SET_NETWORK_LIMIT_SIG,
+                "historic SetNetworkLimit found!"
+            );
+            assertTrue(
+                sig != SET_OPERATOR_SHARES_SIG,
+                "historic SetOperatorNetworkShares found!"
+            );
+        }
+    }
+
 }
