@@ -105,9 +105,10 @@ contract TestDepositSuccessTests is BaseTest {
         assertEq(mintedShares,    depositAmount, "No shares minted");
 
         // Check balances after deposit
-        assertEq(spk.balanceOf(alice),  initialSPKBalance  - depositAmount, "SPK not transferred");
-        assertEq(sSpk.balanceOf(alice), initialSSPKBalance + mintedShares,  "sSPK not minted");
-        assertEq(sSpk.totalSupply(),    initialTotalSupply + mintedShares,  "Total supply not updated");
+        assertEq(spk.balanceOf(alice),            initialSPKBalance  - depositAmount, "SPK not transferred");
+        assertEq(sSpk.balanceOf(alice),           initialSSPKBalance + mintedShares,  "sSPK not minted");
+        assertEq(sSpk.totalSupply(),              initialTotalSupply + mintedShares,  "Total supply not updated");
+        assertEq(spk.balanceOf(address(sSpk)),    depositAmount,                      "SPK not transferred to vault");
     }
 
     function test_multipleUserDeposits() public {
@@ -126,10 +127,11 @@ contract TestDepositSuccessTests is BaseTest {
         vm.stopPrank();
 
         // Verify both deposits
-        assertEq(depositAmount1,        depositAmount, "Alice deposit amount incorrect");
-        assertEq(depositAmount2,        depositAmount, "Bob deposit amount incorrect");
-        assertEq(sSpk.balanceOf(alice), aliceShares,   "Alice shares incorrect");
-        assertEq(sSpk.balanceOf(bob),   bobShares,     "Bob shares incorrect");
+        assertEq(depositAmount1,               depositAmount,                   "Alice deposit amount incorrect");
+        assertEq(depositAmount2,               depositAmount,                   "Bob deposit amount incorrect");
+        assertEq(sSpk.balanceOf(alice),        aliceShares,                     "Alice shares incorrect");
+        assertEq(sSpk.balanceOf(bob),          bobShares,                       "Bob shares incorrect");
+        assertEq(spk.balanceOf(address(sSpk)), depositAmount1 + depositAmount2, "SPK not transferred to vault");
     }
 
     function test_deposit_VaultStakeAndSlashableBalance() public {
@@ -148,7 +150,9 @@ contract TestDepositSuccessTests is BaseTest {
 
         // Check slashable balance
         uint256 slashableBalance = sSpk.slashableBalanceOf(alice);
-        assertEq(slashableBalance, depositAmount, "Invalid slashable balance for Alice");
+
+        assertEq(slashableBalance,             depositAmount, "Invalid slashable balance for Alice");
+        assertEq(spk.balanceOf(address(sSpk)), depositAmount, "SPK not transferred to vault");
     }
 
 }
@@ -213,7 +217,9 @@ contract TestWithdrawSuccessTests is BaseTest {
         // Check withdrawal shares
         uint256 currentEpoch = sSpk.currentEpoch();
         uint256 withdrawalShares = sSpk.withdrawalsOf(currentEpoch + 1, alice);
-        assertEq(withdrawalShares, mintedWithdrawalShares, "Withdrawal shares mismatch");
+
+        assertEq(withdrawalShares,             mintedWithdrawalShares, "Withdrawal shares mismatch");
+        assertEq(spk.balanceOf(address(sSpk)), depositAmount,          "SPK not transferred to vault");
     }
 
 }
@@ -310,9 +316,10 @@ contract TestClaimSuccessTests is BaseTest {
         vm.prank(alice);
         uint256 claimedAmount = sSpk.claim(alice, currentEpoch + 1);
 
-        assertEq(claimedAmount,         withdrawAmount,                     "Invalid claimed amount");
-        assertEq(spk.balanceOf(alice),  aliceBalanceBefore + claimedAmount, "SPK not received");
-        assertEq(sSpk.balanceOf(alice), depositAmount - withdrawAmount,     "Active shares not burned");
+        assertEq(claimedAmount,                withdrawAmount,                        "Invalid claimed amount");
+        assertEq(spk.balanceOf(alice),         aliceBalanceBefore + claimedAmount,    "SPK not received");
+        assertEq(sSpk.balanceOf(alice),        depositAmount - withdrawAmount,        "Active shares not burned");
+        assertEq(spk.balanceOf(address(sSpk)), depositAmount - withdrawAmount + 1e18, "SPK not transferred to vault");
     }
 
 }
@@ -395,8 +402,9 @@ contract TestClaimBatchSuccessTests is BaseTest {
         uint256 totalClaimed = sSpk.claimBatch(alice, withdrawalEpochs);
 
         // Verify batch claim
-        assertEq(totalClaimed,         1500e18,                           "Nothing claimed in batch");
-        assertEq(spk.balanceOf(alice), aliceBalanceBefore + totalClaimed, "SPK not received from batch claim");
+        assertEq(totalClaimed,                 1500e18,                             "Nothing claimed in batch");
+        assertEq(spk.balanceOf(alice),         aliceBalanceBefore + totalClaimed,   "SPK not received from batch claim");
+        assertEq(spk.balanceOf(address(sSpk)), depositAmount - totalClaimed + 1e18, "SPK not transferred to vault");
     }
 
 }
@@ -461,7 +469,8 @@ contract TestRedeemSuccessTests is BaseTest {
         assertEq(redeemWithdrawalShares, redeemShares,   "No withdrawal shares minted");
 
         // Verify active shares were burned correctly
-        assertEq(sSpk.balanceOf(alice), initialActiveShares - redeemShares, "Active shares not burned correctly");
+        assertEq(sSpk.balanceOf(alice),        initialActiveShares - redeemShares, "Active shares not burned correctly");
+        assertEq(spk.balanceOf(address(sSpk)), depositAmount,                      "SPK not transferred to vault");
 
         // Check withdrawal shares were created correctly
         uint256 withdrawalShares = sSpk.withdrawalsOf(currentEpoch + 1, alice);

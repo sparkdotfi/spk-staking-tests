@@ -5,7 +5,7 @@ import "./BaseTest.sol";
 
 contract IntegrationTest is BaseTest {
 
-    function test_fullDepositWithdrawClaimCycle() public {
+    function test_e2e_fullDepositWithdrawClaimCycle() public {
         // Step 0: Initialize epoch system with a deposit
         _initializeEpochSystem();
 
@@ -34,17 +34,10 @@ contract IntegrationTest is BaseTest {
         vm.prank(alice);
         uint256 claimed = sSpk.claim(alice, withdrawalEpoch);
 
-        // Verify final state
-        uint256 finalBalance = spk.balanceOf(alice);
-
-        // Calculate expected final balance: initial - deposited + claimed
-        uint256 expectedFinalBalance = initialBalance - deposited + claimed;
-
         // Basic verifications with precise assertions
-        assertEq(deposited, depositAmount,  "Should have deposited exact amount");
-        assertEq(claimed,   withdrawAmount, "Should have claimed exact withdraw amount");
-
-        assertGt(sharesReceived, 0, "Should have received shares"); // Shares calculation depends on sSpk state
+        assertEq(deposited,      depositAmount,  "Should have deposited exact amount");
+        assertEq(claimed,        withdrawAmount, "Should have claimed exact withdraw amount");
+        assertEq(sharesReceived, depositAmount,  "Should have received shares");
 
         // Verify withdrawal shares equal claimed amount (1:1 relationship in normal operation)
         assertEq(withdrawalShares, claimed, "Withdrawal shares should equal claimed amount");
@@ -53,12 +46,14 @@ contract IntegrationTest is BaseTest {
         // Expected burned shares = (sharesReceived * withdrawAmount) / depositAmount
         uint256 expectedBurnedShares = (sharesReceived * withdrawAmount) / depositAmount;
         assertEq(sharesBurned, expectedBurnedShares, "Should have burned proportional shares");
+        assertEq(sharesBurned, withdrawalShares,     "Should have burned proportional shares");
+        assertEq(sharesBurned, withdrawAmount,       "Should have burned proportional shares");
 
         // Verify Alice's balance accounting is correct
-        assertEq(finalBalance, expectedFinalBalance, "Alice's final balance should match expected (initial - deposited + claimed)");
+        assertEq(spk.balanceOf(alice), initialBalance - deposited + claimed, "Alice's final balance should match expected (initial - deposited + claimed)");
     }
 
-    function test_VaultEcosystemIntegration() public {
+    function test_e2e_vaultEcosystemIntegration() public {
         // Comprehensive test of sSpk interaction with Symbiotic ecosystem
         _initializeEpochSystem();
 
@@ -79,15 +74,14 @@ contract IntegrationTest is BaseTest {
         spk.approve(address(sSpk), depositAmount);
         ( uint256 deposited, uint256 shares ) = sSpk.deposit(alice, depositAmount);
         assertEq(deposited, depositAmount, "Should deposit exact amount");
-        assertGt(shares, 0, "Should mint shares on deposit"); // Share calculation depends on sSpk state
+        assertEq(shares,    depositAmount, "Should mint shares on deposit"); // Share calculation depends on sSpk state
 
         // Check delegation (funds should be managed by delegator)
         uint256 totalStake = sSpk.totalStake();
-        assertGe(totalStake, depositAmount, "Total stake should include at least Alice's deposit");
+        assertEq(totalStake, depositAmount + 1e18, "Total stake should include at least Alice's deposit");
 
         // Withdrawal
         uint256 withdrawAmount = 500e18;
-        uint256 currentEpoch = sSpk.currentEpoch();
         ( uint256 burnedShares, uint256 withdrawalShares ) = sSpk.withdraw(alice, withdrawAmount);
         vm.stopPrank();
 
@@ -114,7 +108,7 @@ contract IntegrationTest is BaseTest {
         assertTrue(true, "Vault ecosystem integration working correctly");
     }
 
-    function test_SlashingProtectsUnstakingUsers() public {
+    function test_e2e_slashingProtectsUnstakingUsers() public {
         // Test that shows how the delay system protects users who want to unstake
         // due to disagreement with slashing or governance decisions
 
@@ -161,36 +155,13 @@ contract IntegrationTest is BaseTest {
         uint256 withdrawalEpoch = currentEpoch + 1;
         vm.prank(alice);
         uint256 claimedAmount = sSpk.claim(alice, withdrawalEpoch);
+        uint256 expectedClaimedAmount = withdrawAmount - (withdrawAmount * slashAmount / (depositAmount + 1e18));
 
-        assertGt(claimedAmount, 0, "Alice should still be able to claim and exit");
-        // Note: Exact amount may be affected by slashing, but Alice can still exit
+        // Allow for small rounding errors
+        assertApproxEqAbs(claimedAmount, expectedClaimedAmount, 1, "Alice should still be able to claim and exit");
     }
 
-    function test_CannotDirectlyTransferVaultTokens() public {
-        // Give sSpk some tokens first
-        uint256 depositAmount = 1000e18;
-        vm.startPrank(alice);
-        spk.approve(address(sSpk), depositAmount);
-        sSpk.deposit(alice, depositAmount);
-        vm.stopPrank();
-
-        uint256 sSpkBalance = spk.balanceOf(address(sSpk));
-        assertEq(sSpkBalance, depositAmount, "Vault should have exact deposit amount");
-
-        // This test verifies that the sSpk doesn't expose any unauthorized withdrawal functions
-        // The sSpk contract doesn't have direct transfer functions accessible to users
-        // which is the expected security behavior - users can only withdraw through proper channels
-
-        // Verify sSpk still has tokens and they're secure
-        assertEq(spk.balanceOf(address(sSpk)), sSpkBalance, "Vault tokens should be safe");
-
-        // Users can only access funds through proper withdrawal -> claim process
-        uint256 attackerInitialBalance = spk.balanceOf(attacker);
-        // Attacker has no way to directly extract sSpk funds
-        assertEq(spk.balanceOf(attacker), attackerInitialBalance, "Attacker cannot drain sSpk");
-    }
-
-    function test_ComplexMultiUserScenario() public {
+    function test_e2e_complexMultiUserScenario() public {
         // Test a complex scenario with multiple users, deposits, withdrawals, and slashing
         _initializeEpochSystem();
 
@@ -275,7 +246,7 @@ contract IntegrationTest is BaseTest {
         assertGt(finalTotalStake, 0, "Vault should still have stake remaining");
     }
 
-    function test_SlashingDoesNotAffectExistingWithdrawals() public {
+    function test_e2e_slashingDoesNotAffectExistingWithdrawals() public {
         // Test that slashing after withdrawal initiation doesn't affect the withdrawal amount
         // This verifies that withdrawal shares represent a fixed claim on underlying assets
 
@@ -325,4 +296,5 @@ contract IntegrationTest is BaseTest {
 
         // This test shows how slashing interacts with existing withdrawals
     }
+
 }
