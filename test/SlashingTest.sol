@@ -3,15 +3,29 @@ pragma solidity 0.8.25;
 
 import "./BaseTest.sol";
 
+interface IVetoSlasher {
+
+    function requestSlash(
+        bytes32 subnetwork,
+        address operator,
+        uint256 amount,
+        uint48  captureTimestamp,
+        bytes   calldata hints
+    ) external returns (uint256 slashIndex);
+
+}
+
 contract SlashingTest is BaseTest {
 
-    function test_UnauthorizedCannotCallOnSlash() public {
+    error InsufficientSlash();
+
+    function test_wnauthorizedCannotCallOnSlash() public {
         vm.expectRevert("NotSlasher()");
         vm.prank(attacker);
         sSpk.onSlash(1000e18, uint48(block.timestamp));
     }
 
-    function test_OnlySlasherCanSlash() public {
+    function test_onlySlasherCanSlash() public {
         // Initialize the system and add some deposits for slashing
         _initializeEpochSystem();
 
@@ -62,7 +76,7 @@ contract SlashingTest is BaseTest {
         assertEq(totalStakeAfter, totalStakeBefore - slashedAmount, "Total stake should decrease by slashed amount");
     }
 
-    function test_RealSlashingScenario() public {
+    function test_realSlashingScenario() public {
         // Initialize epoch system and set up sSpk with deposits
         _initializeEpochSystem();
 
@@ -104,7 +118,7 @@ contract SlashingTest is BaseTest {
         assertEq(actualSlashedAmount, slashAmount, "Slashed amount should exactly equal requested amount");
     }
 
-    function test_SlashingAccessControl() public {
+    function test_slashingAccessControl() public {
         // Initialize system first to allow actual slashing verification
         _initializeEpochSystem();
 
@@ -156,7 +170,7 @@ contract SlashingTest is BaseTest {
         assertEq(actualSlashedAmount, slashAmount,                             "Slashed amount should exactly equal requested amount");
     }
 
-    function test_SlashingImpactOnUserWithdrawals() public {
+    function test_slashingImpactOnUserWithdrawals() public {
         // Initialize and set up deposits
         _initializeEpochSystem();
 
@@ -221,7 +235,7 @@ contract SlashingTest is BaseTest {
         assertTrue(reductionPercentage <= slashingPercentage + 100, "Reduction should not exceed slashing percentage by much");
     }
 
-    function test_MultipleSlashingEvents() public {
+    function test_multipleSlashingEvents() public {
         _initializeEpochSystem();
 
         // Give Alice extra tokens for this specific test
@@ -273,7 +287,7 @@ contract SlashingTest is BaseTest {
         assertEq(sSpkBalanceAfterSecondSlash, initialVaultBalance - totalSlashedAmount, "Total balance reduction should equal sum of slashed amounts");
     }
 
-    function test_SlashingWithZeroAmount() public {
+    function test_slashingWithZeroAmount() public {
         // Initialize system and add some stake to make the test meaningful
         _initializeEpochSystem();
 
@@ -300,7 +314,7 @@ contract SlashingTest is BaseTest {
         assertEq(sSpkBalanceAfter,    sSpkBalanceBefore, "Zero slashing should not change sSpk balance");
     }
 
-    function test_SlashingWithFutureTimestamp() public {
+    function test_slashingWithFutureTimestamp() public {
         // Initialize system and add stake for meaningful slashing
         _initializeEpochSystem();
 
@@ -330,7 +344,7 @@ contract SlashingTest is BaseTest {
         assertEq(actualSlashedAmount, slashAmount, "Slashed amount should exactly equal requested amount");
     }
 
-    function test_CompleteSlashingFundFlow() public {
+    function test_completeSlashingFundFlow() public {
         // Test the complete slashing fund flow: sSpk -> burner router -> Spark Governance
         _initializeEpochSystem();
 
@@ -387,7 +401,7 @@ contract SlashingTest is BaseTest {
         assertGt(sSpkDecrease, 0, "Funds should have left sSpk immediately");
     }
 
-    function test_SlashingWithVetoWindow() public {
+    function test_slashingWithVetoWindow() public {
         // Test that demonstrates the 3-day veto window concept
         _initializeEpochSystem();
 
@@ -432,7 +446,7 @@ contract SlashingTest is BaseTest {
         assertEq(spk.balanceOf(address(sSpk)), sSpkBalanceAfter, "Slashing remains in effect after veto window");
     }
 
-    function test_NetworkOnboarding() public {
+    function test_networkOnboarding() public {
         // Test real network onboarding flow according to Symbiotic documentation
         // Reference: https://docs.symbiotic.fi/handbooks/networks-handbook
 
@@ -484,7 +498,7 @@ contract SlashingTest is BaseTest {
         assertEq(sSpk.delegator(), NETWORK_DELEGATOR, "Should use correct delegator");
     }
 
-    function test_OperatorOnboardingFlow() public {
+    function test_operatorOnboardingFlow() public {
         // Test comprehensive operator onboarding flow according to Symbiotic documentation
         // Reference: https://docs.symbiotic.fi/handbooks/operators-handbook
 
@@ -558,7 +572,7 @@ contract SlashingTest is BaseTest {
         assertTrue(currentEpoch >= 0, "Vault should track epochs for operator stake timing");
     }
 
-    function test_SlashingProportionalImpact() public {
+    function test_slashingProportionalImpact() public {
         // Simplified test for proportional slashing impact to avoid stack too deep
         _initializeEpochSystem();
 
@@ -610,7 +624,7 @@ contract SlashingTest is BaseTest {
         assertTrue(shareValueReductionPercentage <= 2000, "Share value reduction should be reasonable (<=20%)");
     }
 
-    function test_PreciseWithdrawalCalculationsAfterSlashing() public {
+    function test_preciseWithdrawalCalculationsAfterSlashing() public {
         // Test withdrawal calculations with multiple users and slashing scenarios
         _initializeEpochSystem();
 
@@ -705,4 +719,16 @@ contract SlashingTest is BaseTest {
         assertTrue(totalReductionPercentage >= slashingPercentage - 200, "Total reduction should be close to slashing percentage");
         assertTrue(totalReductionPercentage <= slashingPercentage + 200, "Total reduction should not exceed slashing percentage by much");
     }
+
+    function test_requestSlash_revertsInsufficientSlash() public {
+        bytes32 network = bytes32(uint256(uint160(0x8c1a46D032B7b30D9AB4F30e51D8139CC3E85Ce3)) << 96);
+        address NETWORK_MIDDLEWARE = 0x1bbd37E4325d931Aef5fEDEF1f87e8343835acE4;
+
+        console.log(block.timestamp);
+
+        vm.prank(NETWORK_MIDDLEWARE);
+        vm.expectRevert(abi.encodeWithSelector(InsufficientSlash.selector));
+        IVetoSlasher(VETO_SLASHER).requestSlash(network, address(0), 1, uint48(block.timestamp - 1 days), "");
+    }
+
 }
