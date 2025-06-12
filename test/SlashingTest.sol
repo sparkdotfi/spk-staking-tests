@@ -728,7 +728,7 @@ contract SlashingTest is BaseTest {
 
         vm.prank(NETWORK_MIDDLEWARE);
         vm.expectRevert(abi.encodeWithSelector(InsufficientSlash.selector));
-        IVetoSlasher(VETO_SLASHER).requestSlash(network, address(0), 1, uint48(block.timestamp - 1 days), "");
+        IVetoSlasher(VETO_SLASHER).requestSlash(network, address(0), 1000e18, uint48(block.timestamp - 1 days), "");
     }
 
 }
