@@ -724,8 +724,6 @@ contract SlashingTest is BaseTest {
         bytes32 network = bytes32(uint256(uint160(0x8c1a46D032B7b30D9AB4F30e51D8139CC3E85Ce3)) << 96);
         address NETWORK_MIDDLEWARE = 0x1bbd37E4325d931Aef5fEDEF1f87e8343835acE4;
 
-        console.log(block.timestamp);
-
         vm.prank(NETWORK_MIDDLEWARE);
         vm.expectRevert(abi.encodeWithSelector(InsufficientSlash.selector));
         IVetoSlasher(VETO_SLASHER).requestSlash(network, address(0), 1000e18, uint48(block.timestamp - 1 days), "");
