@@ -5,24 +5,24 @@ import "./BaseTest.sol";
 
 contract IntegrationTest is BaseTest {
 
-    function test_FullDepositWithdrawClaimCycle() public {
+    function test_fullDepositWithdrawClaimCycle() public {
         // Step 0: Initialize epoch system with a deposit
         _initializeEpochSystem();
 
-        uint256 depositAmount = 2000e18;
+        uint256 depositAmount  = 2000e18;
         uint256 withdrawAmount = 1500e18;
 
         // Step 1: Deposit
         vm.startPrank(alice);
         uint256 initialBalance = spk.balanceOf(alice);
         spk.approve(address(sSpk), depositAmount);
-        (uint256 deposited, uint256 sharesReceived) = sSpk.deposit(alice, depositAmount);
+        ( uint256 deposited, uint256 sharesReceived ) = sSpk.deposit(alice, depositAmount);
 
         // Step 2: Wait some time and withdraw
         vm.warp(block.timestamp + 1 days);
         uint256 currentEpoch = sSpk.currentEpoch();
         uint256 currentEpochStart = sSpk.currentEpochStart();
-        (uint256 sharesBurned, uint256 withdrawalShares) = sSpk.withdraw(alice, withdrawAmount);
+        ( uint256 sharesBurned, uint256 withdrawalShares ) = sSpk.withdraw(alice, withdrawAmount);
 
         vm.stopPrank();
 
@@ -77,7 +77,7 @@ contract IntegrationTest is BaseTest {
         // Deposit
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
-        (uint256 deposited, uint256 shares) = sSpk.deposit(alice, depositAmount);
+        ( uint256 deposited, uint256 shares ) = sSpk.deposit(alice, depositAmount);
         assertEq(deposited, depositAmount, "Should deposit exact amount");
         assertGt(shares, 0, "Should mint shares on deposit"); // Share calculation depends on sSpk state
 
@@ -88,7 +88,7 @@ contract IntegrationTest is BaseTest {
         // Withdrawal
         uint256 withdrawAmount = 500e18;
         uint256 currentEpoch = sSpk.currentEpoch();
-        (uint256 burnedShares, uint256 withdrawalShares) = sSpk.withdraw(alice, withdrawAmount);
+        ( uint256 burnedShares, uint256 withdrawalShares ) = sSpk.withdraw(alice, withdrawAmount);
         vm.stopPrank();
 
         // Verify proportional share burning: burned shares = (total shares * withdraw amount) / deposit amount
@@ -292,7 +292,7 @@ contract IntegrationTest is BaseTest {
         uint256 currentEpoch = sSpk.currentEpoch();
         uint256 currentEpochStart = sSpk.currentEpochStart();
 
-        (uint256 aliceBurnedShares, uint256 aliceWithdrawalShares) = sSpk.withdraw(alice, withdrawAmount);
+        ( uint256 aliceBurnedShares, uint256 aliceWithdrawalShares ) = sSpk.withdraw(alice, withdrawAmount);
         vm.stopPrank();
 
         // Record withdrawal state

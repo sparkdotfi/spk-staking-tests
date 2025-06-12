@@ -451,7 +451,7 @@ contract SlashingTest is BaseTest {
         assertTrue(networkRegistry != address(0), "NetworkRegistry should exist");
 
         // Verify NetworkRegistry has the expected interface
-        (bool success,) = networkRegistry.staticcall(
+        ( bool success, ) = networkRegistry.staticcall(
             abi.encodeWithSignature("isEntity(address)", mockNetworkOwner)
         );
         assertTrue(success, "NetworkRegistry should have isEntity function");
@@ -461,7 +461,7 @@ contract SlashingTest is BaseTest {
         assertTrue(networkMiddlewareService != address(0), "NetworkMiddlewareService should exist");
 
         // Verify NetworkMiddlewareService has the expected interface
-        (bool middlewareSuccess,) = networkMiddlewareService.staticcall(
+        ( bool middlewareSuccess, ) = networkMiddlewareService.staticcall(
             abi.encodeWithSignature("middleware(address)", mockNetworkOwner)
         );
         assertTrue(middlewareSuccess, "NetworkMiddlewareService should have middleware function");
@@ -472,7 +472,7 @@ contract SlashingTest is BaseTest {
         assertEq(delegator, NETWORK_DELEGATOR, "Vault should have delegator");
 
         // Verify delegator has network limit functionality (this is what networks would call)
-        (bool limitSuccess,) = delegator.staticcall(
+        ( bool limitSuccess, ) = delegator.staticcall(
             abi.encodeWithSignature("maxNetworkLimit(bytes32)", bytes32(0))
         );
         assertTrue(limitSuccess, "Delegator should support network limits");
@@ -502,7 +502,7 @@ contract SlashingTest is BaseTest {
         // Verify OperatorRegistry exists and has correct interface
         assertTrue(operatorRegistry != address(0), "OperatorRegistry should exist");
 
-        (bool regSuccess,) = operatorRegistry.staticcall(
+        ( bool regSuccess, ) = operatorRegistry.staticcall(
             abi.encodeWithSignature("isEntity(address)", mockOperator)
         );
         assertTrue(regSuccess, "OperatorRegistry should have isEntity function");
@@ -510,7 +510,7 @@ contract SlashingTest is BaseTest {
         // Step 2: Opt into sSpk using VaultOptInService
         assertTrue(sSpkOptInService != address(0), "VaultOptInService should exist");
 
-        (bool sSpkOptSuccess,) = sSpkOptInService.staticcall(
+        ( bool sSpkOptSuccess, ) = sSpkOptInService.staticcall(
             abi.encodeWithSignature("isOptedIn(address,address)", mockOperator, address(sSpk))
         );
         assertTrue(sSpkOptSuccess, "VaultOptInService should have isOptedIn function");
@@ -518,7 +518,7 @@ contract SlashingTest is BaseTest {
         // Step 3: Opt into network using NetworkOptInService
         assertTrue(networkOptInService != address(0), "NetworkOptInService should exist");
 
-        (bool networkOptSuccess,) = networkOptInService.staticcall(
+        ( bool networkOptSuccess, ) = networkOptInService.staticcall(
             abi.encodeWithSignature("isOptedIn(address,address)", mockOperator, NETWORK_DELEGATOR)
         );
         assertTrue(networkOptSuccess, "NetworkOptInService should have isOptedIn function");

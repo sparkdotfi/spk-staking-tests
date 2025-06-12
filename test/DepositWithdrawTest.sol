@@ -116,13 +116,13 @@ contract TestDepositSuccessTests is BaseTest {
         // Alice deposits
         vm.startPrank(alice);
         spk.approve(address(sSpk), depositAmount);
-        (uint256 depositAmount1, uint256 aliceShares) = sSpk.deposit(alice, depositAmount);
+        ( uint256 depositAmount1, uint256 aliceShares ) = sSpk.deposit(alice, depositAmount);
         vm.stopPrank();
 
         // Bob deposits
         vm.startPrank(bob);
         spk.approve(address(sSpk), depositAmount);
-        (uint256 depositAmount2, uint256 bobShares) = sSpk.deposit(bob, depositAmount);
+        ( uint256 depositAmount2, uint256 bobShares ) = sSpk.deposit(bob, depositAmount);
         vm.stopPrank();
 
         // Verify both deposits
@@ -200,7 +200,7 @@ contract TestWithdrawSuccessTests is BaseTest {
         uint256 withdrawAmount = 500e18; // Withdraw half
 
         // Initiate withdrawal
-        (uint256 burnedShares, uint256 mintedWithdrawalShares) = sSpk.withdraw(alice, withdrawAmount);
+        ( uint256 burnedShares, uint256 mintedWithdrawalShares ) = sSpk.withdraw(alice, withdrawAmount);
 
         vm.stopPrank();
 
@@ -452,7 +452,7 @@ contract TestRedeemSuccessTests is BaseTest {
         uint256 totalShares    = sSpk.totalSupply();
         uint256 expectedAssets = (redeemShares * totalAssets) / totalShares;
 
-        (uint256 withdrawnAssets, uint256 redeemWithdrawalShares) = sSpk.redeem(alice, redeemShares);
+        ( uint256 withdrawnAssets, uint256 redeemWithdrawalShares ) = sSpk.redeem(alice, redeemShares);
 
         vm.stopPrank();
 
