@@ -197,6 +197,8 @@ contract GovernanceSlashingTest is BaseTest {
 
         // --- Step 3: Owner multisig vetos the slash request
 
+        skip(3 days - 1 seconds);  // Demonstrate multisig has a full three days from request to veto
+
         vm.prank(OWNER_MULTISIG);
         slasher.vetoSlash(slashIndex, "");
 
@@ -207,7 +209,7 @@ contract GovernanceSlashingTest is BaseTest {
 
         // --- Step 4: Attempt to execute the slashing after veto (should fail)
 
-        skip(3 days + 1);  // Fast-forward past veto window to pass that check
+        skip(1 seconds);  // Fast-forward to the next block to pass the check to show relevant error
 
         vm.prank(HYPERLANE_NETWORK);
         vm.expectRevert("SlashRequestCompleted()");
