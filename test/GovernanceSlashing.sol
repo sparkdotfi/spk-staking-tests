@@ -34,7 +34,7 @@ contract GovernanceSlashingTest is BaseTest {
         operatorRegistry  = IOperatorRegistry(OPERATOR_REGISTRY);
         middlewareService = INetworkMiddlewareService(slasher.NETWORK_MIDDLEWARE_SERVICE());
 
-        subnetwork = bytes32(uint256(uint160(SPARK_GOVERNANCE)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
+        subnetwork = bytes32(uint256(uint160(HYPERLANE_NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
     }
 
     function test_governanceCanSlashFirstLossPool() public {
@@ -42,83 +42,92 @@ contract GovernanceSlashingTest is BaseTest {
         /*** Do Spark Governance configuration ***/
         /*****************************************/
 
-        vm.startPrank(SPARK_GOVERNANCE);
+        // Step 1: Set the middleware to Spark Governance, set max network limit in vault delegator
+        vm.startPrank(HYPERLANE_NETWORK);
+        middlewareService.setMiddleware(HYPERLANE_NETWORK);
+        delegator.setMaxNetworkLimit(0, 100_000e18);
+        vm.stopPrank();
 
-        // Step 1: Register the network and operator (both Spark Governance)
-        networkRegistry.registerNetwork();
-        operatorRegistry.registerOperator();
-
-        // Step 2: Set the middleware to Spark Governance
-        middlewareService.setMiddleware(SPARK_GOVERNANCE);
-
-        // Step 3: Configure the network and operator to take control of SPK stake
-        delegator.setMaxNetworkLimit(0, 10_000e18);
-        delegator.setNetworkLimit(subnetwork, 10_000e18);
+        // Step 2: Configure the network and operator to take control of 100k SPK stake
+        vm.startPrank(OWNER_MULTISIG);
+        delegator.setNetworkLimit(subnetwork, 100_000e18);
         delegator.setOperatorNetworkShares(
             subnetwork,
-            SPARK_GOVERNANCE,
+            OPERATOR,
             1e18  // 100% shares
         );
+        vm.stopPrank();
 
-        // Step 4: Opt in to the vault and the network as the operator (Spark Governance)
+        assertEq(delegator.totalOperatorNetworkSharesAt(subnetwork, uint48(block.timestamp), ""), 1e18);
+
+        // Step 3: Opt in to the vault as the operator
+        vm.startPrank(OPERATOR);
         IOptInService(delegator.OPERATOR_VAULT_OPT_IN_SERVICE()).optIn(address(sSpk));
-        IOptInService(delegator.OPERATOR_NETWORK_OPT_IN_SERVICE()).optIn(SPARK_GOVERNANCE);
-
         vm.stopPrank();
 
         /***********************************/
         /*** Test slashing functionality ***/
         /***********************************/
 
-        // Step 1: Deposit 5k SPK to Spark Governance
-        vm.startPrank(alice);
-        spk.approve(address(sSpk), 5_000e18);
-        sSpk.deposit(alice, 5_000e18);
-        vm.stopPrank();
+        deal(address(spk), alice, 10_000_000e18);
 
-        // Step 2: Check the operator shares (means Spark Governance has control of the stake)
-        uint256 shares = delegator.totalOperatorNetworkSharesAt(
-            subnetwork,
-            uint48(block.timestamp),
-            ""
-        );
-        assertEq(shares, 1e18);
+        // Step 1: Deposit 10m SPK to Spark Governance
+        vm.startPrank(alice);
+        spk.approve(address(sSpk), 10_000_000e18);
+        sSpk.deposit(alice, 10_000_000e18);
+        vm.stopPrank();
 
         skip(24 hours);  // Warp 24 hours
 
-        // Step 3: Request a slash of 10% of staked SPK (500)
-        uint48  captureTimestamp = uint48(block.timestamp - 1 hours);
+        // Step 2: Request a slash of 10% of staked SPK (500)
+        uint48 captureTimestamp = uint48(block.timestamp - 1 hours);
 
-        vm.prank(SPARK_GOVERNANCE);
-        uint256 slashIndex = slasher.requestSlash(subnetwork, SPARK_GOVERNANCE, 500e18, captureTimestamp, "");
+        vm.prank(HYPERLANE_NETWORK);
+        uint256 slashIndex = slasher.requestSlash(subnetwork, OPERATOR, 10_000_000e18, captureTimestamp, "");
 
-        // Step 4: Fast-forward past veto window and execute the slash
+        assertEq(slasher.slashRequestsLength(), 1);
+
+        ( ,, uint256 amount,,, ) = slasher.slashRequests(slashIndex);
+
+        assertEq(amount, 100_000e18);  // Can't request to slash more than the network limit (requested full 10m)
+
+        // Step 3: Fast-forward past veto window and execute the slash
         vm.warp(block.timestamp + 3 days + 1);
 
-        assertEq(sSpk.activeBalanceOf(alice), 5000e18);
-        assertEq(sSpk.totalStake(),           5000e18);
+        assertEq(sSpk.activeBalanceOf(alice), 10_000_000e18);
+        assertEq(sSpk.totalStake(),           10_000_000e18);
+        assertEq(sSpk.activeStake(),          10_000_000e18);
 
-        assertEq(spk.balanceOf(address(sSpk)), 5000e18);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 100_000e18);
+
+        assertEq(spk.balanceOf(address(sSpk)), 10_000_000e18);
         assertEq(spk.balanceOf(BURNER_ROUTER), 0);
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(HYPERLANE_NETWORK);
         slasher.executeSlash(slashIndex, "");
 
-        assertEq(sSpk.activeBalanceOf(alice), 4500e18);
-        assertEq(sSpk.totalStake(),           4500e18);
+        assertEq(sSpk.activeBalanceOf(alice), 9_900_000e18);
+        assertEq(sSpk.totalStake(),           9_900_000e18);
+        assertEq(sSpk.activeStake(),          9_900_000e18);
 
-        assertEq(spk.balanceOf(address(sSpk)), 4500e18);
-        assertEq(spk.balanceOf(BURNER_ROUTER), 500e18);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 0);
+
+        assertEq(spk.balanceOf(address(sSpk)), 9_900_000e18);
+        assertEq(spk.balanceOf(BURNER_ROUTER), 100_000e18);
 
         uint256 governanceBalance = spk.balanceOf(SPARK_GOVERNANCE);
 
-        // Step 6: Transfer funds from the burner router to Spark Governance
+        // Step 4: Transfer funds from the burner router to Spark Governance
         //         NOTE: This can be called by anyone
         IBurnerRouter(BURNER_ROUTER).triggerTransfer(SPARK_GOVERNANCE);
 
         assertEq(spk.balanceOf(BURNER_ROUTER),    0);
-        assertEq(spk.balanceOf(SPARK_GOVERNANCE), governanceBalance + 500e18);
+        assertEq(spk.balanceOf(SPARK_GOVERNANCE), governanceBalance + 100_000e18);
 
+        // Step 5: Show that slasher cannot slash anymore once the limit is hit
+        vm.prank(HYPERLANE_NETWORK);
+        vm.expectRevert("InsufficientSlash()");
+        slasher.executeSlash(slashIndex, "");
     }
 
 }

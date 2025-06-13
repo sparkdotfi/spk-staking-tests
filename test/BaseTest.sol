@@ -24,12 +24,14 @@ abstract contract BaseTest is Test {
 
     // Mainnet addresses from deployment
     address constant BURNER_ROUTER     = 0x8BaB0b7975A3128D3D712A33Dc59eb5346e74BCd;
+    address constant HYPERLANE_NETWORK = 0x59cf937Ea9FA9D7398223E3aA33d92F7f5f986A2;
     address constant NETWORK_DELEGATOR = 0x2C5bF9E8e16716A410644d6b4979d74c1951952d;
     address constant OWNER_MULTISIG    = 0x7a27a9f2A823190140cfb4027f4fBbfA438bac79;
     address constant SPARK_GOVERNANCE  = 0x3300f198988e4C9C63F75dF86De36421f06af8c4;
     address constant SPK               = 0xc20059e0317DE91738d13af027DfC4a50781b066;
     address constant STAKED_SPK_VAULT  = 0xc6132FAF04627c8d05d6E759FAbB331Ef2D8F8fD;
     address constant VETO_SLASHER      = 0x4BaaEB2Bf1DC32a2Fb2DaA4E7140efb2B5f8cAb7;
+    address constant OPERATOR          = 0x087c25f83ED20bda587CFA035ED0c96338D4660f;  // TODO: Change
 
     // Constants from deployment
     uint48 constant BURNER_DELAY          = 31 days;
@@ -64,12 +66,10 @@ abstract contract BaseTest is Test {
     }
 
     function _setupTestUsers() internal {
-        // TODO: Deal
-        // Use the helper function to give tokens to test users
-        _giveTokens(alice,    10000e18);   // 10k SPK
-        _giveTokens(bob,      10000e18);     // 10k SPK
-        _giveTokens(charlie,  10000e18); // 10k SPK
-        _giveTokens(attacker, 10000e18); // 10k SPK for attack tests
+        deal(SPK, alice,    10_000e18);
+        deal(SPK, bob,      10_000e18);
+        deal(SPK, charlie,  10_000e18);
+        deal(SPK, attacker, 10_000e18);
     }
 
     // ============ HELPER FUNCTIONS ============
@@ -81,24 +81,11 @@ abstract contract BaseTest is Test {
     function _initializeEpochSystem() internal {
         // Make a small deposit to start the epoch system
         address initialDepositor = makeAddr("epochInitializer");
-        _giveTokens(initialDepositor, 1e18); // 1 SPK
+        deal(SPK, initialDepositor, 1e18); // 1 SPK
 
         vm.startPrank(initialDepositor);
         spk.approve(address(sSpk), 1e18);
         sSpk.deposit(initialDepositor, 1e18);
-        vm.stopPrank();
-    }
-
-    /**
-     * @notice Internal helper function to give SPK tokens to any address
-     * @param to Address to send tokens to
-     * @param amount Amount of SPK tokens to send (in wei)
-     */
-    function _giveTokens(address to, uint256 amount) internal {
-        address whale = 0xBE8E3e3618f7474F8cB1d074A26afFef007E98FB; // 6.5 billion SPK whale
-
-        vm.startPrank(whale);
-        spk.transfer(to, amount);
         vm.stopPrank();
     }
 
