@@ -69,12 +69,18 @@ contract GovernanceSlashingTest is BaseTest {
         /*** Test slashing functionality ***/
         /***********************************/
 
-        deal(address(spk), alice, 10_000_000e18);
+        deal(address(spk), alice, 6_000_000e18);
+        deal(address(spk), bob,   4_000_000e18);
 
-        // Step 1: Deposit 10m SPK to Spark Governance
+        // Step 1: Deposit 10m SPK to stSPK as two users
         vm.startPrank(alice);
-        spk.approve(address(sSpk), 10_000_000e18);
-        sSpk.deposit(alice, 10_000_000e18);
+        spk.approve(address(sSpk), 6_000_000e18);
+        sSpk.deposit(alice, 6_000_000e18);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        spk.approve(address(sSpk), 4_000_000e18);
+        sSpk.deposit(bob, 4_000_000e18);
         vm.stopPrank();
 
         skip(24 hours);  // Warp 24 hours
@@ -94,7 +100,8 @@ contract GovernanceSlashingTest is BaseTest {
         // Step 3: Fast-forward past veto window and execute the slash
         vm.warp(block.timestamp + 3 days + 1);
 
-        assertEq(sSpk.activeBalanceOf(alice), 10_000_000e18);
+        assertEq(sSpk.activeBalanceOf(alice), 6_000_000e18);
+        assertEq(sSpk.activeBalanceOf(bob),   4_000_000e18);
         assertEq(sSpk.totalStake(),           10_000_000e18);
         assertEq(sSpk.activeStake(),          10_000_000e18);
 
@@ -106,7 +113,8 @@ contract GovernanceSlashingTest is BaseTest {
         vm.prank(HYPERLANE_NETWORK);
         slasher.executeSlash(slashIndex, "");
 
-        assertEq(sSpk.activeBalanceOf(alice), 9_900_000e18);
+        assertEq(sSpk.activeBalanceOf(alice), 6_000_000e18 - 60_000e18);  // Proportional slash
+        assertEq(sSpk.activeBalanceOf(bob),   4_000_000e18 - 40_000e18);  // Proportional slash
         assertEq(sSpk.totalStake(),           9_900_000e18);
         assertEq(sSpk.activeStake(),          9_900_000e18);
 
