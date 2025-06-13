@@ -2,18 +2,7 @@
 pragma solidity 0.8.25;
 
 import "./BaseTest.sol";
-
-interface IVetoSlasher {
-
-    function requestSlash(
-        bytes32 subnetwork,
-        address operator,
-        uint256 amount,
-        uint48  captureTimestamp,
-        bytes   calldata hints
-    ) external returns (uint256 slashIndex);
-
-}
+import "../lib/core/src/interfaces/slasher/IVetoSlasher.sol";
 
 contract SlashingTest is BaseTest {
 

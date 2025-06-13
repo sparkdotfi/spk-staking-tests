@@ -3,52 +3,14 @@ pragma solidity 0.8.25;
 
 import "./BaseTest.sol";
 
-interface INetworkMiddlewareService {
-    function setMiddleware(address middleware) external;
-}
-
-interface INetworkRegistry {
-    function registerNetwork() external;
-}
-
-interface INetworkRestakeDelegator {
-    function setNetworkLimit(bytes32 subnetwork, uint256 amount) external;
-    function setMaxNetworkLimit(uint96 identifier, uint256 amount) external;
-    function setOperatorNetworkShares(
-        bytes32 subnetwork,
-        address operator,
-        uint256 shares
-    ) external;
-    function totalOperatorNetworkSharesAt(
-        bytes32 subnetwork,
-        uint48 timestamp,
-        bytes memory hint
-    ) external view returns (uint256);
-    function OPERATOR_VAULT_OPT_IN_SERVICE() external view returns (address);
-    function OPERATOR_NETWORK_OPT_IN_SERVICE() external view returns (address);
-}
-
-interface IOperatorRegistry {
-    function registerOperator() external;
-}
-
-interface IOptInService {
-    function optIn(address where) external;
-    function WHO_REGISTRY() external view returns (address);
-}
-
-interface IVetoSlasher {
-    function NETWORK_MIDDLEWARE_SERVICE() external view returns (address);
-    function NETWORK_REGISTRY() external view returns (address);
-    function requestSlash(
-        bytes32 subnetwork,
-        address operator,
-        uint256 amount,
-        uint48  captureTimestamp,
-        bytes   calldata hints
-    ) external returns (uint256 slashIndex);
-    function executeSlash(uint256 slashIndex, bytes calldata hints) external;
-}
+import { INetworkMiddlewareService }  from "../lib/core/src/interfaces/service/INetworkMiddlewareService.sol";
+import { INetworkRegistry }           from "../lib/core/src/interfaces/INetworkRegistry.sol";
+import { INetworkRestakeDelegator }   from "../lib/core/src/interfaces/delegator/INetworkRestakeDelegator.sol";
+import { IOperatorRegistry }          from "../lib/core/src/interfaces/IOperatorRegistry.sol";
+import { IOptInService }              from "../lib/core/src/interfaces/service/IOptInService.sol";
+import { IVault }                     from "../lib/core/src/interfaces/vault/IVault.sol";
+import { IVaultTokenized }            from "../lib/core/src/interfaces/vault/IVaultTokenized.sol";
+import { IVetoSlasher }               from "../lib/core/src/interfaces/slasher/IVetoSlasher.sol";
 
 contract GovernanceSlashingTest is BaseTest {
 
