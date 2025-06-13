@@ -23,12 +23,13 @@ abstract contract BaseTest is Test {
     /**********************************************************************************************/
 
     // Mainnet addresses from deployment
-    address constant BURNER_ROUTER     = 0xe244C36C8D6831829590c05F49bBb98B11965efb;
-    address constant NETWORK_DELEGATOR = 0x20ba8C54B62F1F4653289DCdf316d68199158Fb6;
+    address constant BURNER_ROUTER     = 0x8BaB0b7975A3128D3D712A33Dc59eb5346e74BCd;
+    address constant NETWORK_DELEGATOR = 0x2C5bF9E8e16716A410644d6b4979d74c1951952d;
+    address constant OWNER_MULTISIG    = 0x7a27a9f2A823190140cfb4027f4fBbfA438bac79;
     address constant SPARK_GOVERNANCE  = 0x3300f198988e4C9C63F75dF86De36421f06af8c4;
     address constant SPK               = 0xc20059e0317DE91738d13af027DfC4a50781b066;
-    address constant STAKED_SPK_VAULT  = 0x0542206DAD09b1b58f29155b4317F9Bf92CD2701;
-    address constant VETO_SLASHER      = 0xeF4fa9b4529A9e983B18F223A284025f24d2F18B;
+    address constant STAKED_SPK_VAULT  = 0xc6132FAF04627c8d05d6E759FAbB331Ef2D8F8fD;
+    address constant VETO_SLASHER      = 0x4BaaEB2Bf1DC32a2Fb2DaA4E7140efb2B5f8cAb7;
 
     // Constants from deployment
     uint48 constant BURNER_DELAY          = 31 days;
@@ -50,11 +51,7 @@ abstract contract BaseTest is Test {
     // ============ SETUP ============
 
     function setUp() public virtual {
-        // Fork mainnet at a recent block - requires MAINNET_RPC_URL to be set
-        string memory rpcUrl = vm.envString("MAINNET_RPC_URL");
-
-        uint256 forkId = vm.createFork(rpcUrl, 22632309);
-        vm.selectFork(forkId);
+        vm.createSelectFork(getChain("mainnet").rpcUrl, 22698495);
 
         // Initialize contract instances
         burnerRouter = IBurnerRouter(BURNER_ROUTER);

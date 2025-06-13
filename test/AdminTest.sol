@@ -19,15 +19,15 @@ contract SetIsDepositLimitFailureTests is BaseTest {
     }
 
     function test_setIsDepositLimit_alreadySet() public {
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setIsDepositLimit(true);
 
         vm.expectRevert("AlreadySet()");
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setIsDepositLimit(true);
 
         // Can set a new value if it's different from the previous value
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setIsDepositLimit(false);
         assertFalse(sSpk.isDepositLimit(), "Deposit limit enabled");
     }
@@ -39,7 +39,7 @@ contract SetIsDepositLimitSuccessTests is BaseTest {
     event SetIsDepositLimit(bool status);
 
     function test_setIsDepositLimit() public {
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         vm.expectEmit(address(sSpk));
         emit SetIsDepositLimit(true);
         sSpk.setIsDepositLimit(true);
@@ -65,16 +65,16 @@ contract SetDepositLimitFailureTests is BaseTest {
     }
 
     function test_setDepositLimit_alreadySet() public {
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setDepositLimit(1_000_000e18);
 
         vm.expectRevert("AlreadySet()");
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setDepositLimit(1_000_000e18);
 
         // Can set a new deposit limit if it's different from the previous limit
         uint256 newLimit2 = 2_000_000e18; // 2M SPK limit
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setDepositLimit(newLimit2);
         assertEq(sSpk.depositLimit(), newLimit2, "Deposit limit not set correctly");
     }
@@ -88,7 +88,7 @@ contract SetDepositLimitSuccessTests is BaseTest {
     function test_setIsDepositLimit() public {
         uint256 newLimit = 1_000_000e18; // 1M SPK limit
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         vm.expectEmit(address(sSpk));
         emit SetDepositLimit(newLimit);
         sSpk.setDepositLimit(newLimit);
@@ -114,15 +114,15 @@ contract SetDepositWhitelistFailureTests is BaseTest {
     }
 
     function test_setDepositWhitelist_alreadySet() public {
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setDepositWhitelist(true);
 
         vm.expectRevert("AlreadySet()");
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setDepositWhitelist(true);
 
         // Can set a new value if it's different from the previous value
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setDepositWhitelist(false);
         assertFalse(sSpk.depositWhitelist(), "Deposit whitelist not disabled");
     }
@@ -134,7 +134,7 @@ contract SetDepositWhitelistSuccessTests is BaseTest {
     event SetDepositWhitelist(bool status);
 
     function test_setDepositWhitelist() public {
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         vm.expectEmit(address(sSpk));
         emit SetDepositWhitelist(true);
         sSpk.setDepositWhitelist(true);
@@ -161,20 +161,20 @@ contract SetDepositorWhitelistStatusFailureTests is BaseTest {
 
     function test_setDepositorWhitelistStatus_invalidAccount() public {
         vm.expectRevert("InvalidAccount()");
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setDepositorWhitelistStatus(address(0), true);
     }
 
     function test_setDepositorWhitelistStatus_alreadySet() public {
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setDepositorWhitelistStatus(alice, true);
 
         vm.expectRevert("AlreadySet()");
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setDepositorWhitelistStatus(alice, true);
 
         // Can set a new value if it's different from the previous value
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setDepositorWhitelistStatus(alice, false);
 
         assertFalse(sSpk.isDepositorWhitelisted(alice), "Alice not whitelisted");
@@ -187,7 +187,7 @@ contract SetDepositorWhitelistStatusSuccessTests is BaseTest {
     event SetDepositorWhitelistStatus(address indexed account, bool status);
 
     function test_setDepositorWhitelistStatus() public {
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         vm.expectEmit(address(sSpk));
         emit SetDepositorWhitelistStatus(alice, true);
         sSpk.setDepositorWhitelistStatus(alice, true);
@@ -195,7 +195,7 @@ contract SetDepositorWhitelistStatusSuccessTests is BaseTest {
         assertTrue(sSpk.isDepositorWhitelisted(alice), "Alice not whitelisted");
 
         // Should whitelist a new user
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setDepositorWhitelistStatus(bob, true);
 
         assertTrue(sSpk.isDepositorWhitelisted(bob), "Bob not whitelisted");
@@ -214,7 +214,7 @@ contract BurnerRouterSetGlobalReceiverFailureTests is BaseTest {
     }
 
     function test_setGlobalReceiver_alreadySet() public {
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setGlobalReceiver(alice);
 
         vm.warp(block.timestamp + BURNER_DELAY + 1);
@@ -223,10 +223,10 @@ contract BurnerRouterSetGlobalReceiverFailureTests is BaseTest {
         burnerRouter.acceptGlobalReceiver();
 
         vm.expectRevert("AlreadySet()");
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setGlobalReceiver(alice);
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setGlobalReceiver(bob);
 
         ( address pendingGlobalReceiver, ) = burnerRouter.pendingGlobalReceiver();
@@ -244,7 +244,7 @@ contract BurnerRouterSetGlobalReceiverSuccessTests is BaseTest {
 
         address newReceiver = makeAddr("newReceiver");
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setGlobalReceiver(newReceiver);
 
         // Current receiver should still be the old one
@@ -260,7 +260,7 @@ contract BurnerRouterSetGlobalReceiverSuccessTests is BaseTest {
 contract BurnerRouterAcceptGlobalReceiverFailureTests is BaseTest {
 
     function test_acceptGlobalReceiver_notReady() public {
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setGlobalReceiver(alice);
 
         vm.warp(block.timestamp + BURNER_DELAY - 1);
@@ -287,7 +287,7 @@ contract BurnerRouterAcceptGlobalReceiverSuccessTests is BaseTest {
 
         address newReceiver = makeAddr("newReceiver");
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setGlobalReceiver(newReceiver);
 
         // Current receiver should still be the old one
@@ -315,7 +315,7 @@ contract BurnerRouterOwnershipTest is BaseTest {
     function test_BurnerRouterOwnership() public view {
         // Test that Spark Governance is the actual owner of the burner router
         address owner = OwnableUpgradeable(address(burnerRouter)).owner();
-        assertEq(owner, SPARK_GOVERNANCE, "Spark Governance should be the owner of burner router");
+        assertEq(owner, OWNER_MULTISIG, "Spark Governance should be the owner of burner router");
     }
 
 }
@@ -334,7 +334,7 @@ contract BurnerRouterSetDelayFailureTests is BaseTest {
         uint48 initialDelay = burnerRouter.delay();
         uint48 newDelay = 15 days; // Change from 31 days to 15 days
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setDelay(newDelay);
 
         vm.warp(block.timestamp + initialDelay + 1);
@@ -342,12 +342,12 @@ contract BurnerRouterSetDelayFailureTests is BaseTest {
         burnerRouter.acceptDelay();
 
         vm.expectRevert("AlreadySet()");
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setDelay(newDelay);
 
         // Can set a new delay if it's different from the previous delay
         uint48 newDelay2 = 10 days;
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setDelay(newDelay2);
 
         vm.warp(block.timestamp + initialDelay + 1);
@@ -364,7 +364,7 @@ contract BurnerRouterSetDelaySuccessTests is BaseTest {
     function test_setDelay() public {
         uint48 newDelay = 15 days; // Change from 31 days to 15 days
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setDelay(newDelay);
 
         ( uint48 pendingDelay, ) = burnerRouter.pendingDelay();
@@ -380,7 +380,7 @@ contract BurnerRouterAcceptDelayFailureTests is BaseTest {
         uint48 initialDelay = burnerRouter.delay();
         uint48 newDelay     = 15 days;  // Change from 31 days to 15 days
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setDelay(newDelay);
 
         vm.warp(block.timestamp + initialDelay - 1);
@@ -407,7 +407,7 @@ contract BurnerRouterAcceptDelaySuccessTests is BaseTest {
         // Test that owner (Spark Governance) can initiate delay change
         uint48 newDelay = 15 days; // Change from 31 days to 15 days
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setDelay(newDelay);
 
         // Check that delay is still the old value (change is pending)
@@ -443,7 +443,7 @@ contract BurnerRouterSetNetworkReceiverFailureTests is BaseTest {
     function test_setNetworkReceiver_alreadySet() public {
         address network = makeAddr("network");
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setNetworkReceiver(network, alice);
 
         vm.warp(block.timestamp + BURNER_DELAY + 1);
@@ -451,10 +451,10 @@ contract BurnerRouterSetNetworkReceiverFailureTests is BaseTest {
         burnerRouter.acceptNetworkReceiver(network);
 
         vm.expectRevert("AlreadySet()");
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setNetworkReceiver(network, alice);
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setNetworkReceiver(network, bob);
 
         ( address pendingNetworkReceiver, ) = burnerRouter.pendingNetworkReceiver(network);
@@ -469,7 +469,7 @@ contract BurnerRouterSetNetworkReceiverSuccessTests is BaseTest {
     function test_setNetworkReceiver() public {
         address network = makeAddr("network");
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setNetworkReceiver(network, alice);
 
         ( address pendingNetworkReceiver, ) = burnerRouter.pendingNetworkReceiver(network);
@@ -484,7 +484,7 @@ contract BurnerRouterAcceptNetworkReceiverFailureTests is BaseTest {
     function test_acceptNetworkReceiver_notReady() public {
         address network = makeAddr("network");
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setNetworkReceiver(network, alice);
 
         vm.warp(block.timestamp + BURNER_DELAY - 1);
@@ -512,7 +512,7 @@ contract BurnerRouterAcceptNetworkReceiverSuccessTests is BaseTest {
 
         address newReceiver = makeAddr("newReceiver");
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setNetworkReceiver(network, newReceiver);
 
         // Current receiver should still be the old one
@@ -544,7 +544,7 @@ contract BurnerRouterSetOperatorNetworkReceiverFailureTests is BaseTest {
         address network = makeAddr("network");
         address operator = makeAddr("operator");
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setOperatorNetworkReceiver(network, operator, alice);
 
         vm.warp(block.timestamp + BURNER_DELAY + 1);
@@ -552,10 +552,10 @@ contract BurnerRouterSetOperatorNetworkReceiverFailureTests is BaseTest {
         burnerRouter.acceptOperatorNetworkReceiver(network, operator);
 
         vm.expectRevert("AlreadySet()");
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setOperatorNetworkReceiver(network, operator, alice);
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setOperatorNetworkReceiver(network, operator, bob);
 
         ( address pendingOperatorNetworkReceiver, ) = burnerRouter.pendingOperatorNetworkReceiver(network, operator);
@@ -571,7 +571,7 @@ contract BurnerRouterSetOperatorNetworkReceiverSuccessTests is BaseTest {
         address network = makeAddr("network");
         address operator = makeAddr("operator");
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setOperatorNetworkReceiver(network, operator, alice);
 
         ( address pendingOperatorNetworkReceiver, ) = burnerRouter.pendingOperatorNetworkReceiver(network, operator);
@@ -587,7 +587,7 @@ contract BurnerRouterAcceptOperatorNetworkReceiverFailureTests is BaseTest {
         address network = makeAddr("network");
         address operator = makeAddr("operator");
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setOperatorNetworkReceiver(network, operator, alice);
 
         vm.warp(block.timestamp + BURNER_DELAY - 1);
@@ -612,7 +612,7 @@ contract BurnerRouterAcceptOperatorNetworkReceiverSuccessTests is BaseTest {
         address network = makeAddr("network");
         address operator = makeAddr("operator");
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         burnerRouter.setOperatorNetworkReceiver(network, operator, alice);
 
         // Fast forward past the 31-day delay
