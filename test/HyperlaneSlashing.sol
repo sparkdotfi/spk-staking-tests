@@ -255,8 +255,13 @@ contract GovernanceSlashingTest is BaseTest {
             assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 100_000e18 - totalSlashed);
         }
 
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, uint48(block.timestamp), ""), 0);
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, uint48(block.timestamp + 1), ""), 0);
+        uint48 postSlashTimestamp = uint48(block.timestamp);
+
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, postSlashTimestamp, ""), 0);
+
+        skip(1 seconds);
+
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, postSlashTimestamp, ""), 0);
     }
 
     function test_slashableStakeRechargesWithNewTimestamps() public {
