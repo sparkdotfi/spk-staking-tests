@@ -14,6 +14,11 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
+import { INetworkMiddlewareService }  from "../lib/core/src/interfaces/service/INetworkMiddlewareService.sol";
+import { INetworkRestakeDelegator }   from "../lib/core/src/interfaces/delegator/INetworkRestakeDelegator.sol";
+import { IOptInService }              from "../lib/core/src/interfaces/service/IOptInService.sol";
+import { IVetoSlasher }               from "../lib/core/src/interfaces/slasher/IVetoSlasher.sol";
+
 interface IStakedSPK is IERC20Metadata, IVaultTokenized, IAccessControl {}
 
 abstract contract BaseTest is Test {
@@ -22,16 +27,20 @@ abstract contract BaseTest is Test {
     /*** Constants                                                                              ***/
     /**********************************************************************************************/
 
-    // Mainnet addresses from deployment
+    // Deployed addresses
     address constant BURNER_ROUTER     = 0x8BaB0b7975A3128D3D712A33Dc59eb5346e74BCd;
-    address constant HYPERLANE_NETWORK = 0x59cf937Ea9FA9D7398223E3aA33d92F7f5f986A2;
     address constant NETWORK_DELEGATOR = 0x2C5bF9E8e16716A410644d6b4979d74c1951952d;
-    address constant OWNER_MULTISIG    = 0x7a27a9f2A823190140cfb4027f4fBbfA438bac79;
-    address constant SPARK_GOVERNANCE  = 0x3300f198988e4C9C63F75dF86De36421f06af8c4;
-    address constant SPK               = 0xc20059e0317DE91738d13af027DfC4a50781b066;
     address constant STAKED_SPK_VAULT  = 0xc6132FAF04627c8d05d6E759FAbB331Ef2D8F8fD;
     address constant VETO_SLASHER      = 0x4BaaEB2Bf1DC32a2Fb2DaA4E7140efb2B5f8cAb7;
+
+    // Actors
+    address constant HYPERLANE_NETWORK = 0x59cf937Ea9FA9D7398223E3aA33d92F7f5f986A2;
     address constant OPERATOR          = 0x087c25f83ED20bda587CFA035ED0c96338D4660f;  // TODO: Change
+    address constant OWNER_MULTISIG    = 0x7a27a9f2A823190140cfb4027f4fBbfA438bac79;
+    address constant SPARK_GOVERNANCE  = 0x3300f198988e4C9C63F75dF86De36421f06af8c4;
+
+    // Token
+    address constant SPK = 0xc20059e0317DE91738d13af027DfC4a50781b066;
 
     // Constants from deployment
     uint48 constant BURNER_DELAY          = 31 days;
@@ -45,24 +54,58 @@ abstract contract BaseTest is Test {
     address charlie  = makeAddr("charlie");
 
     // Contract instances
-    IBurnerRouter   burnerRouter;
-    IERC20Metadata  spk;
-    IStakedSPK      sSpk;  // For accessing ERC20 functions
-    IAccessControl  vaultAccess;
+    IBurnerRouter  burnerRouter = IBurnerRouter(BURNER_ROUTER);
+    IERC20Metadata spk          = IERC20Metadata(SPK);
+    IStakedSPK     sSpk         = IStakedSPK(STAKED_SPK_VAULT);  // For accessing ERC20 functions
+    IVetoSlasher   slasher      = IVetoSlasher(VETO_SLASHER);
 
-    // ============ SETUP ============
+    INetworkRestakeDelegator  delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
+
+    INetworkMiddlewareService middlewareService;
+
+    bytes32 public subnetwork = bytes32(uint256(uint160(HYPERLANE_NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
+
+    /**********************************************************************************************/
+    /*** Setup                                                                                  ***/
+    /**********************************************************************************************/
 
     function setUp() public virtual {
-        vm.createSelectFork(getChain("mainnet").rpcUrl, 22698495);
+        vm.createSelectFork(getChain("mainnet").rpcUrl, 22704000);  // June 14, 2025
 
-        // Initialize contract instances
-        burnerRouter = IBurnerRouter(BURNER_ROUTER);
+        middlewareService = INetworkMiddlewareService(slasher.NETWORK_MIDDLEWARE_SERVICE());
 
-        spk  = IERC20Metadata(SPK);
-        sSpk = IStakedSPK(STAKED_SPK_VAULT);
-
-        // Setup test users with SPK tokens
         _setupTestUsers();
+
+        /***********************************/
+        /*** Do Hyperlane configuration  ***/
+        /***********************************/
+
+        // --- Step 1: Do configurations as network, setting middleware, max network limit, and resolver
+
+        vm.startPrank(HYPERLANE_NETWORK);
+        middlewareService.setMiddleware(HYPERLANE_NETWORK);
+        delegator.setMaxNetworkLimit(0, 2_000_000e18);  // 2m SPK upper limit (~$100k)
+        slasher.setResolver(0, OWNER_MULTISIG, "");
+        vm.stopPrank();
+
+        // --- Step 2: Configure the network and operator to take control of 100k SPK stake as the vault owner
+
+        vm.startPrank(OWNER_MULTISIG);
+        delegator.setNetworkLimit(subnetwork, 2_000_000e18);  // 2m SPK upper limit (~$100k)
+        delegator.setOperatorNetworkShares(
+            subnetwork,
+            OPERATOR,
+            1e18  // 100% shares
+        );
+        vm.stopPrank();
+
+        assertEq(delegator.totalOperatorNetworkSharesAt(subnetwork, uint48(block.timestamp), ""), 1e18);
+
+        // --- Step 3: Opt in to the vault as the operator
+
+        vm.startPrank(OPERATOR);
+        IOptInService(delegator.OPERATOR_VAULT_OPT_IN_SERVICE()).optIn(address(sSpk));
+        vm.stopPrank();
     }
 
     function _setupTestUsers() internal {
@@ -72,7 +115,9 @@ abstract contract BaseTest is Test {
         deal(SPK, attacker, 10_000e18);
     }
 
-    // ============ HELPER FUNCTIONS ============
+    /**********************************************************************************************/
+    /*** Helper functions                                                                       ***/
+    /**********************************************************************************************/
 
     /**
      * @notice Helper function to initialize the epoch system with a deposit
