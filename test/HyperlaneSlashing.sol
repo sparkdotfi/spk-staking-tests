@@ -22,11 +22,18 @@ contract GovernanceSlashingTest is BaseTest {
         sSpk.deposit(bob, 4_000_000e18);
         vm.stopPrank();
 
+        uint48 depositTimestamp = uint48(block.timestamp);
+
         skip(24 hours);  // Warp 24 hours
 
         // --- Step 2: Request a slash of all staked SPK (show that network limit is hit)
 
-        uint48 captureTimestamp = uint48(block.timestamp - 1 hours);
+        uint48 captureTimestamp = uint48(block.timestamp - 1 seconds);  // Can't capture current timestamp and above
+
+        // Demonstrate that the slashable stake is 100k SPK at the deposit and capture timestamps, and 0 before deposit
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp - 1, ""), 0);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp,     ""), 100_000e18);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp,     ""), 100_000e18);
 
         vm.prank(HYPERLANE_NETWORK);
         uint256 slashIndex = slasher.requestSlash(subnetwork, OPERATOR, 10_000_000e18, captureTimestamp, "");
@@ -52,6 +59,9 @@ contract GovernanceSlashingTest is BaseTest {
         assertEq(spk.balanceOf(address(sSpk)), 10_000_000e18);
         assertEq(spk.balanceOf(BURNER_ROUTER), 0);
 
+        assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), 0);
+        assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR),               0);
+
         vm.prank(HYPERLANE_NETWORK);
         slasher.executeSlash(slashIndex, "");
 
@@ -64,6 +74,9 @@ contract GovernanceSlashingTest is BaseTest {
 
         assertEq(spk.balanceOf(address(sSpk)), 9_900_000e18);
         assertEq(spk.balanceOf(BURNER_ROUTER), 100_000e18);
+
+        assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), captureTimestamp);
+        assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR),               100_000e18);
 
         ( ,, amount,,, completed ) = slasher.slashRequests(slashIndex);
 
@@ -89,7 +102,16 @@ contract GovernanceSlashingTest is BaseTest {
 
         // --- Step 6: Show that slasher also cannot request new slashes because the network limit has been hit
 
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 0);
+
+        uint48 slashingTimestamp = uint48(block.timestamp);
+
         skip(24 hours);  // Warp 24 hours
+
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, slashingTimestamp,                 ""), 100_000e18);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, slashingTimestamp + 1,             ""), 100_000e18);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, uint48(block.timestamp),           ""), 0);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, uint48(block.timestamp - 1 hours), ""), 100_000e18);
 
         captureTimestamp = uint48(block.timestamp - 1 hours);
 
