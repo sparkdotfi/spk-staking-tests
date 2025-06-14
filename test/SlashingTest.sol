@@ -2,18 +2,7 @@
 pragma solidity 0.8.25;
 
 import "./BaseTest.sol";
-
-interface IVetoSlasher {
-
-    function requestSlash(
-        bytes32 subnetwork,
-        address operator,
-        uint256 amount,
-        uint48  captureTimestamp,
-        bytes   calldata hints
-    ) external returns (uint256 slashIndex);
-
-}
+import "../lib/core/src/interfaces/slasher/IVetoSlasher.sol";
 
 contract SlashingTest is BaseTest {
 
@@ -239,7 +228,7 @@ contract SlashingTest is BaseTest {
         _initializeEpochSystem();
 
         // Give Alice extra tokens for this specific test
-        _giveTokens(alice, 100000e18); // Extra 100k SPK for slashing operations
+        deal(SPK, alice, 100_000e18); // Extra 100k SPK for slashing operations
 
         // Setup very large deposit to handle multiple slashes
         uint256 depositAmount = 50000e18; // 50k SPK

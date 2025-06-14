@@ -34,7 +34,7 @@ contract TestDepositFailureTests is BaseTest {
 
     function test_deposit_notWhitelistedDepositor() public {
         // Enable whitelist
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setDepositWhitelist(true);
 
         uint256 depositAmount = 100e18;
@@ -59,10 +59,10 @@ contract TestDepositFailureTests is BaseTest {
         uint256 depositLimit = 1000e18; // 1k SPK limit
 
         // Set up deposit limit
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setIsDepositLimit(true);
 
-        vm.prank(SPARK_GOVERNANCE);
+        vm.prank(OWNER_MULTISIG);
         sSpk.setDepositLimit(depositLimit);
 
         // Alice deposits up to the limit

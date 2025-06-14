@@ -16,7 +16,7 @@ contract VaultInitializationTest is BaseTest {
         assertEq(address(sSpk.burner()),     BURNER_ROUTER,  "Incorrect burner");
 
         assertEq(sSpk.name(),   "Staked Spark", "Incorrect name");
-        assertEq(sSpk.symbol(), "sSPK",         "Incorrect symbol");
+        assertEq(sSpk.symbol(), "stSPK",        "Incorrect symbol");
 
         assertTrue(sSpk.isInitialized(), "Vault should be initialized");
     }
@@ -32,11 +32,11 @@ contract VaultInitializationTest is BaseTest {
         bytes32 isDepositLimitSetRole = keccak256("IS_DEPOSIT_LIMIT_SET_ROLE");
         bytes32 depositLimitSetRole = keccak256("DEPOSIT_LIMIT_SET_ROLE");
 
-        assertTrue(sSpk.hasRole(defaultAdminRole, SPARK_GOVERNANCE),        "Missing DEFAULT_ADMIN_ROLE");
-        assertTrue(sSpk.hasRole(depositWhitelistSetRole, SPARK_GOVERNANCE), "Missing DEPOSIT_WHITELIST_SET_ROLE");
-        assertTrue(sSpk.hasRole(depositorWhitelistRole, SPARK_GOVERNANCE),  "Missing DEPOSITOR_WHITELIST_ROLE");
-        assertTrue(sSpk.hasRole(isDepositLimitSetRole, SPARK_GOVERNANCE),   "Missing IS_DEPOSIT_LIMIT_SET_ROLE");
-        assertTrue(sSpk.hasRole(depositLimitSetRole, SPARK_GOVERNANCE),     "Missing DEPOSIT_LIMIT_SET_ROLE");
+        assertTrue(sSpk.hasRole(defaultAdminRole, OWNER_MULTISIG),        "Missing DEFAULT_ADMIN_ROLE");
+        assertTrue(sSpk.hasRole(depositWhitelistSetRole, OWNER_MULTISIG), "Missing DEPOSIT_WHITELIST_SET_ROLE");
+        assertTrue(sSpk.hasRole(depositorWhitelistRole, OWNER_MULTISIG),  "Missing DEPOSITOR_WHITELIST_ROLE");
+        assertTrue(sSpk.hasRole(isDepositLimitSetRole, OWNER_MULTISIG),   "Missing IS_DEPOSIT_LIMIT_SET_ROLE");
+        assertTrue(sSpk.hasRole(depositLimitSetRole, OWNER_MULTISIG),     "Missing DEPOSIT_LIMIT_SET_ROLE");
     }
 
     function test_DelegatorAndSlasherAlreadySet() public view {
@@ -73,7 +73,7 @@ contract VaultInitializationTest is BaseTest {
 
     function test_ERC20Functions() public view {
         assertEq(sSpk.name(),     "Staked Spark", "Incorrect name");
-        assertEq(sSpk.symbol(),   "sSPK",         "Incorrect symbol");
+        assertEq(sSpk.symbol(),   "stSPK",        "Incorrect symbol");
         assertEq(sSpk.decimals(), spk.decimals(), "Incorrect decimals");  // Should match SPK decimals
     }
 
@@ -89,7 +89,7 @@ contract VaultInitializationTest is BaseTest {
 
         // Verify precise epoch timing relationships
         assertEq(nextEpochStart, currentEpochStart + EPOCH_DURATION, "Next epoch start should be exactly one EPOCH_DURATION after current");
-        
+
         assertTrue(currentEpochStart <= initialTimestamp, "Current epoch start should not be in the future");
         assertTrue(nextEpochStart > initialTimestamp,     "Next epoch start should be in the future");
 
@@ -140,9 +140,9 @@ contract VaultInitializationTest is BaseTest {
         bytes32 setNetworkLimitRole          = keccak256("NETWORK_LIMIT_SET_ROLE");
         bytes32 setOperatorNetworkSharesRole = keccak256("OPERATOR_NETWORK_SHARES_SET_ROLE");
 
-        assertTrue(networkDelegator.hasRole(defaultAdminRole, SPARK_GOVERNANCE),             "Missing DEFAULT_ADMIN_ROLE");
-        assertTrue(networkDelegator.hasRole(setNetworkLimitRole, SPARK_GOVERNANCE),          "Missing DEPOSIT_WHITELIST_SET_ROLE");
-        assertTrue(networkDelegator.hasRole(setOperatorNetworkSharesRole, SPARK_GOVERNANCE), "Missing DEPOSITOR_WHITELIST_ROLE");
+        assertTrue(networkDelegator.hasRole(defaultAdminRole, OWNER_MULTISIG),             "Missing DEFAULT_ADMIN_ROLE");
+        assertTrue(networkDelegator.hasRole(setNetworkLimitRole, OWNER_MULTISIG),          "Missing DEPOSIT_WHITELIST_SET_ROLE");
+        assertTrue(networkDelegator.hasRole(setOperatorNetworkSharesRole, OWNER_MULTISIG), "Missing DEPOSITOR_WHITELIST_ROLE");
     }
 
 }
