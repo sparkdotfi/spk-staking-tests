@@ -8,13 +8,13 @@ contract SlashingTest is BaseTest {
 
     error InsufficientSlash();
 
-    function test_wnauthorizedCannotCallOnSlash() public {
+    function test_unauthorizedCannotCallOnSlash() public {
         vm.expectRevert("NotSlasher()");
         vm.prank(attacker);
         sSpk.onSlash(1000e18, uint48(block.timestamp));
     }
 
-    function test_onlySlasherCanSlash() public {
+    function test_onlyVetoSlasherCanSlashVault() public {
         // Initialize the system and add some deposits for slashing
         _initializeEpochSystem();
 

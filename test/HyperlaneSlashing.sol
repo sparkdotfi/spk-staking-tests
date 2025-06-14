@@ -4,23 +4,15 @@ pragma solidity 0.8.25;
 import "./BaseTest.sol";
 
 import { INetworkMiddlewareService }  from "../lib/core/src/interfaces/service/INetworkMiddlewareService.sol";
-import { INetworkRegistry }           from "../lib/core/src/interfaces/INetworkRegistry.sol";
 import { INetworkRestakeDelegator }   from "../lib/core/src/interfaces/delegator/INetworkRestakeDelegator.sol";
-import { IOperatorRegistry }          from "../lib/core/src/interfaces/IOperatorRegistry.sol";
 import { IOptInService }              from "../lib/core/src/interfaces/service/IOptInService.sol";
-import { IVault }                     from "../lib/core/src/interfaces/vault/IVault.sol";
-import { IVaultTokenized }            from "../lib/core/src/interfaces/vault/IVaultTokenized.sol";
 import { IVetoSlasher }               from "../lib/core/src/interfaces/slasher/IVetoSlasher.sol";
 
 contract GovernanceSlashingTest is BaseTest {
 
-    address public constant OPERATOR_REGISTRY = 0xAd817a6Bc954F678451A71363f04150FDD81Af9F;
-
     IVetoSlasher              slasher;
     INetworkRestakeDelegator  delegator;
-    INetworkRegistry          networkRegistry;
     INetworkMiddlewareService middlewareService;
-    IOperatorRegistry         operatorRegistry;
 
     bytes32 public subnetwork;
 
@@ -30,8 +22,6 @@ contract GovernanceSlashingTest is BaseTest {
         slasher   = IVetoSlasher(VETO_SLASHER);
         delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
 
-        networkRegistry   = INetworkRegistry(slasher.NETWORK_REGISTRY());
-        operatorRegistry  = IOperatorRegistry(OPERATOR_REGISTRY);
         middlewareService = INetworkMiddlewareService(slasher.NETWORK_MIDDLEWARE_SERVICE());
 
         subnetwork = bytes32(uint256(uint160(HYPERLANE_NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
