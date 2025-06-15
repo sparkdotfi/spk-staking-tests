@@ -111,6 +111,8 @@ contract GovernanceSlashingTest is BaseTest {
         slashIndex = slasher.requestSlash(subnetwork, OPERATOR, 100e18, captureTimestamp, "");  // Use the same capture timestamp
 
         // --- Step 7: Demonstrate time-based slashing behavior
+        //             Slashable stake recharges after slashing events occur. Slashable stake returns to the full network limit
+        //             after the slash is executed.
 
         // Current state: latestSlashedCaptureTimestamp = 1749938602 (the original capture timestamp)
         assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), 1749938602);
@@ -119,7 +121,7 @@ contract GovernanceSlashingTest is BaseTest {
         skip(1 seconds);
 
         // You CAN slash from a new capture timestamp that's greater than the latest slashed
-        uint48 newCaptureTimestamp = uint48(block.timestamp - 1 seconds);  // This is > 1749938602
+        uint48 newCaptureTimestamp = uint48(block.timestamp - 1 seconds);
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, newCaptureTimestamp, ""), 100_000e18);
 
         vm.prank(HYPERLANE_NETWORK);
@@ -133,13 +135,13 @@ contract GovernanceSlashingTest is BaseTest {
         // Now latestSlashedCaptureTimestamp is updated to the new timestamp
         assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), newCaptureTimestamp);
 
-        // You CANNOT slash from the original capture timestamp anymore
+        // Cannot slash from the original capture timestamp anymore
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 0);
 
-        // You CANNOT slash from the new capture timestamp anymore (it was just slashed)
+        // Cannot slash from the new capture timestamp anymore (it was just slashed)
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, newCaptureTimestamp, ""), 0);
 
-        // But you CAN slash from an even newer capture timestamp
+        // But can slash from an even newer capture timestamp
         skip(1 seconds);
         uint48 newerCaptureTimestamp = uint48(block.timestamp - 1 seconds);
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, newerCaptureTimestamp, ""), 100_000e18);
@@ -200,22 +202,13 @@ contract GovernanceSlashingTest is BaseTest {
     }
 
     function test_slashableStakeRechargingAfterSlashing() public {
-        // This test demonstrates a critical flaw: a network can slash every second
-        // at the full network limit, effectively bypassing the network limit entirely
-
-        // --- Step 1: Setup - Deposit 10m SPK
         deal(address(spk), alice, 10_000_000e18);
         vm.startPrank(alice);
         spk.approve(address(sSpk), 10_000_000e18);
         sSpk.deposit(alice, 10_000_000e18);
         vm.stopPrank();
 
-        uint48 depositTimestamp = uint48(block.timestamp);
-
         skip(24 hours);
-
-        // --- Step 2: Demonstrate continuous slashing attack
-        // Network limit is 100,000 SPK, but we the network can slash this amount every second
 
         uint256 totalSlashed = 0;
         uint256[] memory slashIndices = new uint256[](100);
@@ -287,94 +280,6 @@ contract GovernanceSlashingTest is BaseTest {
         // As soon as the fifth slash is executed, the slashable stake stays at 100k
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, firstSlashTimestamp + 39, ""), 100_000e18);
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, firstSlashTimestamp + 40, ""), 100_000e18);
-    }
-
-    function test_slashableStakeRechargesWithNewTimestamps() public {
-        // This test demonstrates how slashableStake "recharges" by using different capture timestamps
-        // for the same underlying stake deposits
-
-        // --- Step 1: Setup - Deposit 10m SPK (this is the stake we'll slash multiple times)
-        deal(address(spk), alice, 10_000_000e18);
-        vm.startPrank(alice);
-        spk.approve(address(sSpk), 10_000_000e18);
-        sSpk.deposit(alice, 10_000_000e18);
-        vm.stopPrank();
-
-        uint48 depositTimestamp = uint48(block.timestamp);
-        skip(24 hours);
-
-        // --- Step 2: First slash at timestamp T1
-        uint48 timestampT1 = uint48(block.timestamp - 1 seconds);
-
-        // Check initial slashable stake
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, timestampT1, ""), 100_000e18);
-
-        vm.prank(HYPERLANE_NETWORK);
-        uint256 slashIndex1 = slasher.requestSlash(subnetwork, OPERATOR, 50_000e18, timestampT1, "");
-
-        skip(3 days + 1);
-        vm.prank(HYPERLANE_NETWORK);
-        uint256 slashedAmount1 = slasher.executeSlash(slashIndex1, "");
-
-        assertEq(slashedAmount1, 50_000e18);
-        assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR), 50_000e18);
-        assertEq(sSpk.activeBalanceOf(alice), 9_950_000e18);
-
-        // --- Step 3: Move forward in time and slash the SAME stake at timestamp T2
-        skip(1 hours); // Move forward 1 hour
-        uint48 timestampT2 = uint48(block.timestamp - 1 seconds);
-
-        // The slashable stake has "recharged" because we're using a new timestamp!
-        uint256 slashableAtT2 = slasher.slashableStake(subnetwork, OPERATOR, timestampT2, "");
-        assertGt(slashableAtT2, 0, "Slashable stake should have recharged at new timestamp");
-
-        vm.prank(HYPERLANE_NETWORK);
-        uint256 slashIndex2 = slasher.requestSlash(subnetwork, OPERATOR, 30_000e18, timestampT2, "");
-
-        skip(3 days + 1);
-        vm.prank(HYPERLANE_NETWORK);
-        uint256 slashedAmount2 = slasher.executeSlash(slashIndex2, "");
-
-        assertEq(slashedAmount2, 30_000e18);
-        assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR), 80_000e18);
-        assertEq(sSpk.activeBalanceOf(alice), 9_920_000e18);
-
-        // --- Step 4: Move forward again and slash the SAME stake at timestamp T3
-        skip(1 hours); // Move forward another hour
-        uint48 timestampT3 = uint48(block.timestamp - 1 seconds);
-
-        uint256 slashableAtT3 = slasher.slashableStake(subnetwork, OPERATOR, timestampT3, "");
-        assertGt(slashableAtT3, 0, "Slashable stake should have recharged at new timestamp");
-
-        vm.prank(HYPERLANE_NETWORK);
-        uint256 slashIndex3 = slasher.requestSlash(subnetwork, OPERATOR, 20_000e18, timestampT3, "");
-
-        skip(3 days + 1);
-        vm.prank(HYPERLANE_NETWORK);
-        uint256 slashedAmount3 = slasher.executeSlash(slashIndex3, "");
-
-        assertEq(slashedAmount3, 20_000e18);
-        assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR), 100_000e18);
-        assertEq(sSpk.activeBalanceOf(alice), 9_900_000e18);
-
-        // --- Step 5: Demonstrate the key insight
-        uint256 totalSlashed = slashedAmount1 + slashedAmount2 + slashedAmount3;
-        assertEq(totalSlashed, 100_000e18, "Total slashed should equal 100k");
-        assertEq(totalSlashed, 100_000e18, "Should have slashed 100% of network limit");
-
-        // Show that we can't slash from the same timestamp twice
-        uint256 slashableAtT1Again = slasher.slashableStake(subnetwork, OPERATOR, timestampT1, "");
-        assertEq(slashableAtT1Again, 0, "Should not be able to slash from same timestamp twice");
-
-        // But we can still slash from new timestamps
-        skip(1 hours);
-        uint48 timestampT4 = uint48(block.timestamp - 1 seconds);
-        uint256 slashableAtT4 = slasher.slashableStake(subnetwork, OPERATOR, timestampT4, "");
-        assertGt(slashableAtT4, 0, "Should be able to slash from new timestamp");
-
-        // Verify that the same underlying stake was slashed multiple times
-        assertEq(sSpk.activeBalanceOf(alice), 9_900_000e18, "Alice's stake should be reduced by total slashed amount");
-        assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR), 100_000e18, "Cumulative slash should equal total slashed");
     }
 
 }
