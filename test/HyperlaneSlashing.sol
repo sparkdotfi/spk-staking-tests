@@ -4,6 +4,10 @@ pragma solidity 0.8.25;
 import "./BaseTest.sol";
 import "forge-std/console.sol";
 
+import { VmSafe } from "forge-std/Vm.sol";
+
+interface INetworkDelegator is IAccessControl {}
+
 contract GovernanceSlashingTest is BaseTest {
 
     function test_hyperlaneCanSlashUpToNetworkLimit() public {
@@ -213,7 +217,7 @@ contract GovernanceSlashingTest is BaseTest {
         uint256 totalSlashed = 0;
         uint256[] memory slashIndices = new uint256[](100);
 
-        // Request slashes every second for 10 seconds
+        // Request slashes every second for 100 seconds
         for (uint256 i = 0; i < 100; i++) {
             uint48 captureTimestamp = uint48(block.timestamp - 1 seconds);
 
@@ -229,8 +233,8 @@ contract GovernanceSlashingTest is BaseTest {
             skip(1 seconds);
         }
 
-        // Wait 3 days + 11 seconds to pass all the veto windows
-        skip(3 days + 11 seconds);
+        // Wait 3 days + 5 seconds to pass all the veto windows for four successful slashes
+        skip(3 days + 4 seconds + 1 seconds);
 
         uint48 firstSlashTimestamp = uint48(block.timestamp);
 
@@ -246,9 +250,11 @@ contract GovernanceSlashingTest is BaseTest {
 
             totalSlashed += slashedAmount;
 
-            assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR),        captureTimestamp);
-            assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR),                      totalSlashed);
-            assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 100_000e18 - totalSlashed);
+            assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR),                  captureTimestamp);
+            assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR),                                totalSlashed);
+            assertEq(slasher.cumulativeSlashAt(subnetwork, OPERATOR, captureTimestamp, ""),        0);
+            assertEq(slasher.cumulativeSlashAt(subnetwork, OPERATOR, uint48(block.timestamp), ""), totalSlashed);
+            assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""),           100_000e18 - totalSlashed);
         }
 
         // Try to execute the 5th slash (should fail because slashable stake is 0)
@@ -261,25 +267,42 @@ contract GovernanceSlashingTest is BaseTest {
 
         skip(10 minutes);  // Warp 10 minutes so time is ahead of all of these timestamps
 
+        assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR), 100_000e18);
+
         // As soon as the first slash is executed, the slashable stake goes back up to 25k
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, firstSlashTimestamp - 1, ""), 0);
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, firstSlashTimestamp,     ""), 25_000e18);
+
+        assertEq(slasher.cumulativeSlashAt(subnetwork, OPERATOR, firstSlashTimestamp - 1, ""), 0);
+        assertEq(slasher.cumulativeSlashAt(subnetwork, OPERATOR, firstSlashTimestamp,     ""), 25_000e18);
 
         // As soon as the second slash is executed, the slashable stake goes back up to 50k
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, firstSlashTimestamp + 9,  ""), 25_000e18);
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, firstSlashTimestamp + 10, ""), 50_000e18);
 
+        assertEq(slasher.cumulativeSlashAt(subnetwork, OPERATOR, firstSlashTimestamp + 9,  ""), 25_000e18);
+        assertEq(slasher.cumulativeSlashAt(subnetwork, OPERATOR, firstSlashTimestamp + 10, ""), 50_000e18);
+
         // As soon as the third slash is executed, the slashable stake goes back up to 75k
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, firstSlashTimestamp + 19, ""), 50_000e18);
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, firstSlashTimestamp + 20, ""), 75_000e18);
+
+        assertEq(slasher.cumulativeSlashAt(subnetwork, OPERATOR, firstSlashTimestamp + 19, ""), 50_000e18);
+        assertEq(slasher.cumulativeSlashAt(subnetwork, OPERATOR, firstSlashTimestamp + 20, ""), 75_000e18);
 
         // As soon as the fourth slash is executed, the slashable stake goes back up to 100k
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, firstSlashTimestamp + 29, ""), 75_000e18);
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, firstSlashTimestamp + 30, ""), 100_000e18);
 
+        assertEq(slasher.cumulativeSlashAt(subnetwork, OPERATOR, firstSlashTimestamp + 29, ""), 75_000e18);
+        assertEq(slasher.cumulativeSlashAt(subnetwork, OPERATOR, firstSlashTimestamp + 30, ""), 100_000e18);
+
         // As soon as the fifth slash is executed, the slashable stake stays at 100k
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, firstSlashTimestamp + 39, ""), 100_000e18);
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, firstSlashTimestamp + 40, ""), 100_000e18);
+
+        assertEq(slasher.cumulativeSlashAt(subnetwork, OPERATOR, firstSlashTimestamp + 39, ""), 100_000e18);
+        assertEq(slasher.cumulativeSlashAt(subnetwork, OPERATOR, firstSlashTimestamp + 40, ""), 100_000e18);
     }
 
 }
