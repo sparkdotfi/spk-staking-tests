@@ -14,10 +14,10 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import { INetworkMiddlewareService }  from "../lib/core/src/interfaces/service/INetworkMiddlewareService.sol";
-import { INetworkRestakeDelegator }   from "../lib/core/src/interfaces/delegator/INetworkRestakeDelegator.sol";
-import { IOptInService }              from "../lib/core/src/interfaces/service/IOptInService.sol";
-import { IVetoSlasher }               from "../lib/core/src/interfaces/slasher/IVetoSlasher.sol";
+import { INetworkMiddlewareService } from "../lib/core/src/interfaces/service/INetworkMiddlewareService.sol";
+import { INetworkRestakeDelegator }  from "../lib/core/src/interfaces/delegator/INetworkRestakeDelegator.sol";
+import { IOptInService }             from "../lib/core/src/interfaces/service/IOptInService.sol";
+import { IVetoSlasher }              from "../lib/core/src/interfaces/slasher/IVetoSlasher.sol";
 
 interface IStakedSPK is IERC20Metadata, IVaultTokenized, IAccessControl {}
 
