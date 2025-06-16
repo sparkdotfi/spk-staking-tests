@@ -241,6 +241,10 @@ contract BurnerRouterDeploymentEventsTest is BaseTest {
 contract StakedSPKVaultDeploymentEventsTest is BaseTest {
 
     // SPK_VAULT event signatures
+    bytes32 private constant TRANSFER_SIG =
+        keccak256("Transfer(address,address,uint256)");
+    bytes32 private constant DEPOSIT_SIG =
+        keccak256("Deposit(address,address,uint256,uint256)");
     bytes32 private constant SET_DELEGATOR_SIG =
         keccak256("SetDelegator(address)");
     bytes32 private constant SET_SLASHER_SIG =
@@ -251,6 +255,10 @@ contract StakedSPKVaultDeploymentEventsTest is BaseTest {
         keccak256("Initialized(uint64)");
     bytes32 private constant ADMIN_CHANGED_SIG =
         keccak256("AdminChanged(address,address)");
+    bytes32 private constant OWNERSHIP_TRANSFERRED_SIG =
+        keccak256("OwnershipTransferred(address,address)");
+    bytes32 private constant UPGRADED_SIG =
+        keccak256("Upgraded(address)");
 
     function test_spkVaultEventsInHistory() public {
         // fetch *all* logs from deploymentBlock → latest
@@ -270,7 +278,11 @@ contract StakedSPKVaultDeploymentEventsTest is BaseTest {
                 sig == INITIALIZED_SIG ||
                 sig == ADMIN_CHANGED_SIG ||
                 sig == SET_DELEGATOR_SIG ||
-                sig == SET_SLASHER_SIG,
+                sig == SET_SLASHER_SIG ||
+                sig == TRANSFER_SIG ||
+                sig == DEPOSIT_SIG ||
+                sig == OWNERSHIP_TRANSFERRED_SIG ||
+                sig == UPGRADED_SIG,
                 "Unknown SPK_VAULT event found!"
             );
         }
