@@ -19,6 +19,8 @@ import { INetworkRestakeDelegator }   from "../lib/core/src/interfaces/delegator
 import { IOptInService }              from "../lib/core/src/interfaces/service/IOptInService.sol";
 import { IVetoSlasher }               from "../lib/core/src/interfaces/slasher/IVetoSlasher.sol";
 
+import { NetworkRestakeResetHook } from "../lib/hooks/src/contracts/networkRestakeDelegator/NetworkRestakeResetHook.sol";
+
 interface IStakedSPK is IERC20Metadata, IVaultTokenized, IAccessControl {}
 
 abstract contract BaseTest is Test {
@@ -48,6 +50,10 @@ abstract contract BaseTest is Test {
     uint48 constant EPOCH_DURATION        = 2 weeks;
     uint48 constant SLASHER_VETO_DURATION = 3 days;
 
+    // Constants based on fork time
+    uint256 ACTIVE_STAKE;
+    uint256 TOTAL_STAKE;
+
     // Test users
     address alice    = makeAddr("alice");
     address attacker = makeAddr("attacker");
@@ -60,7 +66,7 @@ abstract contract BaseTest is Test {
     IStakedSPK     sSpk         = IStakedSPK(STAKED_SPK_VAULT);  // For accessing ERC20 functions
     IVetoSlasher   slasher      = IVetoSlasher(VETO_SLASHER);
 
-    INetworkRestakeDelegator  delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
+    INetworkRestakeDelegator delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
 
     INetworkMiddlewareService middlewareService;
 
@@ -71,7 +77,10 @@ abstract contract BaseTest is Test {
     /**********************************************************************************************/
 
     function setUp() public virtual {
-        vm.createSelectFork(getChain("mainnet").rpcUrl, 22698495);  // June 14, 2025
+        vm.createSelectFork(getChain("mainnet").rpcUrl, 22769489);  // June 14, 2025
+
+        ACTIVE_STAKE = sSpk.activeStake();
+        TOTAL_STAKE  = sSpk.totalStake();
 
         middlewareService = INetworkMiddlewareService(slasher.NETWORK_MIDDLEWARE_SERVICE());
 
@@ -100,7 +109,8 @@ abstract contract BaseTest is Test {
             OPERATOR,
             1e18  // 100% shares
         );
-        delegator.setHook(RESET_HOOK);  // Set the reset hook
+        delegator.setHook(RESET_HOOK);
+        IAccessControl(address(delegator)).grantRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK);
         vm.stopPrank();
 
         assertEq(delegator.totalOperatorNetworkSharesAt(subnetwork, uint48(block.timestamp), ""), 1e18);
