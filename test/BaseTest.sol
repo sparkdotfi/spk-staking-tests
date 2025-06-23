@@ -32,6 +32,7 @@ abstract contract BaseTest is Test {
     address constant NETWORK_DELEGATOR = 0x2C5bF9E8e16716A410644d6b4979d74c1951952d;
     address constant STAKED_SPK_VAULT  = 0xc6132FAF04627c8d05d6E759FAbB331Ef2D8F8fD;
     address constant VETO_SLASHER      = 0x4BaaEB2Bf1DC32a2Fb2DaA4E7140efb2B5f8cAb7;
+    address constant RESET_HOOK        = 0xC3B87BbE976f5Bfe4Dc4992ae4e22263Df15ccBE;
 
     // Actors
     address constant HYPERLANE_NETWORK = 0x59cf937Ea9FA9D7398223E3aA33d92F7f5f986A2;
@@ -99,6 +100,7 @@ abstract contract BaseTest is Test {
             OPERATOR,
             1e18  // 100% shares
         );
+        delegator.setHook(RESET_HOOK);  // Set the reset hook
         vm.stopPrank();
 
         assertEq(delegator.totalOperatorNetworkSharesAt(subnetwork, uint48(block.timestamp), ""), 1e18);

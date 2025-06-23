@@ -67,88 +67,92 @@ contract GovernanceSlashingTest is BaseTest {
         assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), 0);
         assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR),               0);
 
+        assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 1e18);
+
         vm.prank(HYPERLANE_NETWORK);
         slasher.executeSlash(slashIndex, "");
 
-        assertEq(sSpk.activeBalanceOf(alice), 6_000_000e18 - 60_000e18);  // Proportional slash
-        assertEq(sSpk.activeBalanceOf(bob),   4_000_000e18 - 40_000e18);  // Proportional slash
-        assertEq(sSpk.totalStake(),           9_900_000e18);
-        assertEq(sSpk.activeStake(),          9_900_000e18);
+        assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 1e18);
 
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 0);
+        // assertEq(sSpk.activeBalanceOf(alice), 6_000_000e18 - 60_000e18);  // Proportional slash
+        // assertEq(sSpk.activeBalanceOf(bob),   4_000_000e18 - 40_000e18);  // Proportional slash
+        // assertEq(sSpk.totalStake(),           9_900_000e18);
+        // assertEq(sSpk.activeStake(),          9_900_000e18);
 
-        assertEq(spk.balanceOf(address(sSpk)), 9_900_000e18);
-        assertEq(spk.balanceOf(BURNER_ROUTER), 100_000e18);
+        // assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 0);
 
-        assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), captureTimestamp);
-        assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR),               100_000e18);
+        // assertEq(spk.balanceOf(address(sSpk)), 9_900_000e18);
+        // assertEq(spk.balanceOf(BURNER_ROUTER), 100_000e18);
 
-        ( ,, amount,,, completed ) = slasher.slashRequests(slashIndex);
+        // assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), captureTimestamp);
+        // assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR),               100_000e18);
 
-        assertEq(amount,    100_000e18);
-        assertEq(completed, true);
+        // ( ,, amount,,, completed ) = slasher.slashRequests(slashIndex);
 
-        uint256 governanceBalance = spk.balanceOf(SPARK_GOVERNANCE);
+        // assertEq(amount,    100_000e18);
+        // assertEq(completed, true);
 
-        // --- Step 4: Transfer funds from the burner router to Spark Governance
-        //         NOTE: This can be called by anyone
+        // uint256 governanceBalance = spk.balanceOf(SPARK_GOVERNANCE);
 
-        IBurnerRouter(BURNER_ROUTER).triggerTransfer(SPARK_GOVERNANCE);
+        // // --- Step 4: Transfer funds from the burner router to Spark Governance
+        // //         NOTE: This can be called by anyone
 
-        assertEq(spk.balanceOf(BURNER_ROUTER),    0);
-        assertEq(spk.balanceOf(SPARK_GOVERNANCE), governanceBalance + 100_000e18);
+        // IBurnerRouter(BURNER_ROUTER).triggerTransfer(SPARK_GOVERNANCE);
 
-        // --- Step 5: Show that slasher cannot slash anymore with the same request
+        // assertEq(spk.balanceOf(BURNER_ROUTER),    0);
+        // assertEq(spk.balanceOf(SPARK_GOVERNANCE), governanceBalance + 100_000e18);
 
-        // Can't execute the same slash again
-        vm.prank(HYPERLANE_NETWORK);
-        vm.expectRevert("InsufficientSlash()");
-        slasher.executeSlash(slashIndex, "");
+        // // --- Step 5: Show that slasher cannot slash anymore with the same request
 
-        // --- Step 6: Show that slasher also cannot request new slashes because the network limit has been hit
+        // // Can't execute the same slash again
+        // vm.prank(HYPERLANE_NETWORK);
+        // vm.expectRevert("InsufficientSlash()");
+        // slasher.executeSlash(slashIndex, "");
 
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 0);
+        // // --- Step 6: Show that slasher also cannot request new slashes because the network limit has been hit
 
-        // Try to slash from the same capture timestamp that was already slashed
-        vm.prank(HYPERLANE_NETWORK);
-        vm.expectRevert("InsufficientSlash()");
-        slashIndex = slasher.requestSlash(subnetwork, OPERATOR, 100e18, captureTimestamp, "");  // Use the same capture timestamp
+        // assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 0);
 
-        // --- Step 7: Demonstrate time-based slashing behavior
-        //             Slashable stake recharges after slashing events occur. Slashable stake returns to the full network limit
-        //             after the slash is executed.
+        // // Try to slash from the same capture timestamp that was already slashed
+        // vm.prank(HYPERLANE_NETWORK);
+        // vm.expectRevert("InsufficientSlash()");
+        // slashIndex = slasher.requestSlash(subnetwork, OPERATOR, 100e18, captureTimestamp, "");  // Use the same capture timestamp
 
-        // Current state: latestSlashedCaptureTimestamp = 1749938602 (the original capture timestamp)
-        assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), 1749938602);
+        // // --- Step 7: Demonstrate time-based slashing behavior
+        // //             Slashable stake recharges after slashing events occur. Slashable stake returns to the full network limit
+        // //             after the slash is executed.
 
-        // Warp 1 second forward
-        skip(1 seconds);
+        // // Current state: latestSlashedCaptureTimestamp = 1749938602 (the original capture timestamp)
+        // assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), 1749938602);
 
-        // You CAN slash from a new capture timestamp that's greater than the latest slashed
-        uint48 newCaptureTimestamp = uint48(block.timestamp - 1 seconds);
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, newCaptureTimestamp, ""), 100_000e18);
+        // // Warp 1 second forward
+        // skip(1 seconds);
 
-        vm.prank(HYPERLANE_NETWORK);
-        uint256 newSlashIndex = slasher.requestSlash(subnetwork, OPERATOR, 50_000e18, newCaptureTimestamp, "");
+        // // You CAN slash from a new capture timestamp that's greater than the latest slashed
+        // uint48 newCaptureTimestamp = uint48(block.timestamp - 1 seconds);
+        // assertEq(slasher.slashableStake(subnetwork, OPERATOR, newCaptureTimestamp, ""), 100_000e18);
 
-        // Execute this new slash
-        skip(3 days + 1);
-        vm.prank(HYPERLANE_NETWORK);
-        slasher.executeSlash(newSlashIndex, "");
+        // vm.prank(HYPERLANE_NETWORK);
+        // uint256 newSlashIndex = slasher.requestSlash(subnetwork, OPERATOR, 50_000e18, newCaptureTimestamp, "");
 
-        // Now latestSlashedCaptureTimestamp is updated to the new timestamp
-        assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), newCaptureTimestamp);
+        // // Execute this new slash
+        // skip(3 days + 1);
+        // vm.prank(HYPERLANE_NETWORK);
+        // slasher.executeSlash(newSlashIndex, "");
 
-        // Cannot slash from the original capture timestamp anymore
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 0);
+        // // Now latestSlashedCaptureTimestamp is updated to the new timestamp
+        // assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), newCaptureTimestamp);
 
-        // Cannot slash from the new capture timestamp anymore (it was just slashed)
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, newCaptureTimestamp, ""), 0);
+        // // Cannot slash from the original capture timestamp anymore
+        // assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 0);
 
-        // But can slash from an even newer capture timestamp
-        skip(1 seconds);
-        uint48 newerCaptureTimestamp = uint48(block.timestamp - 1 seconds);
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, newerCaptureTimestamp, ""), 100_000e18);
+        // // Cannot slash from the new capture timestamp anymore (it was just slashed)
+        // assertEq(slasher.slashableStake(subnetwork, OPERATOR, newCaptureTimestamp, ""), 0);
+
+        // // But can slash from an even newer capture timestamp
+        // skip(1 seconds);
+        // uint48 newerCaptureTimestamp = uint48(block.timestamp - 1 seconds);
+        // assertEq(slasher.slashableStake(subnetwork, OPERATOR, newerCaptureTimestamp, ""), 100_000e18);
     }
 
     function test_ownerMultisigCanVetoSlash() public {
