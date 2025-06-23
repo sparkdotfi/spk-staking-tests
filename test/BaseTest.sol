@@ -19,8 +19,6 @@ import { INetworkRestakeDelegator }   from "../lib/core/src/interfaces/delegator
 import { IOptInService }              from "../lib/core/src/interfaces/service/IOptInService.sol";
 import { IVetoSlasher }               from "../lib/core/src/interfaces/slasher/IVetoSlasher.sol";
 
-import { NetworkRestakeResetHook } from "../lib/hooks/src/contracts/networkRestakeDelegator/NetworkRestakeResetHook.sol";
-
 interface IStakedSPK is IERC20Metadata, IVaultTokenized, IAccessControl {}
 
 abstract contract BaseTest is Test {
