@@ -243,6 +243,15 @@ contract SlashingTest is BaseTest {
         slasher.requestSlash(subnetwork, OPERATOR, 0, uint48(block.timestamp - 1), "");
     }
 
+    function test_slashingWithCurrentOrFutureTimestamp() public {
+        vm.startPrank(HYPERLANE_NETWORK);
+        vm.expectRevert("InvalidCaptureTimestamp()");
+        slasher.requestSlash(subnetwork, OPERATOR, 0, uint48(block.timestamp), "");
+
+        vm.expectRevert("InvalidCaptureTimestamp()");
+        slasher.requestSlash(subnetwork, OPERATOR, 0, uint48(block.timestamp + 1), "");
+    }
+
     // TODO: Refactor this
     function test_completeSlashingFundFlow() public {
         // Test the complete slashing fund flow: sSpk -> burner router -> Spark Governance

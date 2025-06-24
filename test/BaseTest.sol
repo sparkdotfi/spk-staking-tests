@@ -48,7 +48,7 @@ abstract contract BaseTest is Test {
     uint48 constant EPOCH_DURATION        = 2 weeks;
     uint48 constant SLASHER_VETO_DURATION = 3 days;
 
-    // Constants based on fork time
+    // Constants based on forked state
     uint256 ACTIVE_STAKE;
     uint256 TOTAL_STAKE;
 
@@ -98,7 +98,7 @@ abstract contract BaseTest is Test {
         slasher.setResolver(0, OWNER_MULTISIG, "");
         vm.stopPrank();
 
-        // --- Step 2: Configure the network and operator to take control of 100k SPK stake as the vault owner
+        // --- Step 2: Configure the network and operator to take control of 2m SPK stake as the vault owner
 
         vm.startPrank(OWNER_MULTISIG);
         delegator.setNetworkLimit(subnetwork, 2_000_000e18);
