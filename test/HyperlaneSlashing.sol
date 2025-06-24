@@ -8,7 +8,7 @@ interface INetworkDelegator is IAccessControl {}
 
 contract GovernanceSlashingTest is BaseTest {
 
-function test_hyperlaneCanSlashUpToNetworkLimit() public {
+    function test_hyperlaneCanSlashUpToNetworkLimit() public {
 
         // --- Step 1: Deposit 10m SPK to stSPK as two users
 
