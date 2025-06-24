@@ -7,6 +7,8 @@ import { VmSafe } from "forge-std/Vm.sol";
 
 interface INetworkDelegator is IAccessControl {}
 
+// TODO: Add hook configuration tests after done onchain
+
 contract VaultInitializationTest is BaseTest {
 
     function test_VaultInitialization() public view {
