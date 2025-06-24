@@ -76,7 +76,7 @@ contract GovernanceSlashingTest is BaseTest {
         assertApproxEqAbs(sSpk.activeBalanceOf(alice), 6_000_000e18 - (100_000e18 * 6_000_000e18 / sSpk.totalStake()), 100e18);  // Proportional slash
         assertApproxEqAbs(sSpk.activeBalanceOf(bob),   4_000_000e18 - (100_000e18 * 4_000_000e18 / sSpk.totalStake()), 100e18);  // Proportional slash
 
-        assertEq(sSpk.totalStake(),  TOTAL_STAKE + 10_000_000e18 - 100_000e18);
+        assertEq(sSpk.totalStake(), TOTAL_STAKE + 10_000_000e18 - 100_000e18);
 
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 0);
 

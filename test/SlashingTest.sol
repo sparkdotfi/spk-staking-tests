@@ -216,13 +216,12 @@ contract SlashingTest is BaseTest {
         assertLt(claimedAmount, withdrawAmount, "Claimed amount should be reduced due to slashing");
 
         // Verify the reduction is proportional to the slashing (allow for some tolerance)
-        uint256 slashingPercentage = (actualSlashedAmount * 10000) / totalStakeBefore; // basis points
-        uint256 reductionPercentage = ((withdrawAmount - claimedAmount) * 10000) / withdrawAmount; // basis points
+        uint256 slashingPercentage = (actualSlashedAmount * 1e18) / totalStakeBefore;
+        uint256 reductionPercentage = ((withdrawAmount - claimedAmount) * 1e18) / withdrawAmount;
 
         // Allow for reasonable tolerance (within 100 basis points = 1%)
-        // TODO: Add these back in
-        // assertTrue(reductionPercentage >= slashingPercentage - 100, "Reduction should be at least close to slashing percentage");
-        // assertTrue(reductionPercentage <= slashingPercentage + 100, "Reduction should not exceed slashing percentage by much");
+        assertGe(reductionPercentage, slashingPercentage - 0.00001e18, "Reduction should be at least close to slashing percentage");
+        assertLe(reductionPercentage, slashingPercentage + 0.00001e18, "Reduction should not exceed slashing percentage by much");
     }
 
     function test_multipleSlashingEvents() public {
