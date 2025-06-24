@@ -149,72 +149,65 @@ contract VaultInitializationTest is BaseTest {
 
 }
 
-contract NetworkDelegatorDeploymentEventsTest is BaseTest {
+contract EventsTest is BaseTest {
+
+    uint256 constant START_BLOCK = 20000000;  // June 1, 2024 - well before all deployments
+
+    function _toBytes32(address addr) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(addr)));
+    }
+
+    function _assertLogs(VmSafe.EthGetLogs memory log, bytes32 topic0, bytes32 topic1, bytes32 topic2, bytes32 topic3) internal pure {
+        assertEq(log.topics[0], topic0, "topic0");
+        assertEq(log.topics[1], topic1, "topic1");
+        assertEq(log.topics[2], topic2, "topic2");
+        assertEq(log.topics[3], topic3, "topic3");
+    }
+}
+
+contract NetworkDelegatorDeploymentEventsTest is EventsTest {
+
+    bytes32 constant DELEGATOR_FACTORY = bytes32(uint256(uint160(0x985Ed57AF9D475f1d83c1c1c8826A0E5A34E8C7B)));
 
     // event sig hashes
-    bytes32 private constant SET_NETWORK_LIMIT_SIG =
-        keccak256("SetNetworkLimit(bytes32,uint256)");
-    bytes32 private constant SET_OPERATOR_SHARES_SIG =
-        keccak256("SetOperatorNetworkShares(bytes32,address,uint256)");
-    bytes32 private constant SET_MAX_NETWORK_LIMIT_SIG =
-        keccak256("SetMaxNetworkLimit(bytes32,uint256)");
-    bytes32 private constant ON_SLASH_SIG =
-        keccak256("OnSlash(bytes32,address,uint256,uint48)");
-    bytes32 private constant SET_HOOK_SIG =
-        keccak256("SetHook(address)");
-    bytes32 private constant ROLE_GRANTED_SIG =
-        keccak256("RoleGranted(bytes32,address,address)");
-    bytes32 private constant INITIALIZED_SIG =
-        keccak256("Initialized(uint64)");
+    bytes32 private constant INITIALIZED_SIG           = keccak256("Initialized(uint64)");
+    bytes32 private constant ON_SLASH_SIG              = keccak256("OnSlash(bytes32,address,uint256,uint48)");
+    bytes32 private constant ROLE_GRANTED_SIG          = keccak256("RoleGranted(bytes32,address,address)");
+    bytes32 private constant SET_HOOK_SIG              = keccak256("SetHook(address)");
+    bytes32 private constant SET_MAX_NETWORK_LIMIT_SIG = keccak256("SetMaxNetworkLimit(bytes32,uint256)");
+    bytes32 private constant SET_NETWORK_LIMIT_SIG     = keccak256("SetNetworkLimit(bytes32,uint256)");
+    bytes32 private constant SET_OPERATOR_SHARES_SIG   = keccak256("SetOperatorNetworkShares(bytes32,address,uint256)");
 
-    function test_noConfigEventsInHistory() public {
-        // fetch *all* logs from deploymentBlock → latest
-        uint256 deploymentBlock = 22624651;
-        VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
-            deploymentBlock,
-            block.number,
-            NETWORK_DELEGATOR,
-            new bytes32[](0)
-        );
-
-        // scan them for our forbidden event signatures
-        for (uint i = 0; i < allLogs.length; i++) {
-            bytes32 sig = allLogs[i].topics[0];
-            assertTrue(
-                sig != SET_NETWORK_LIMIT_SIG,
-                "historic SetNetworkLimit found!"
-            );
-            assertTrue(
-                sig != SET_OPERATOR_SHARES_SIG,
-                "historic SetOperatorNetworkShares found!"
-            );
-        }
-    }
+    bytes32 private constant DEFAULT_ADMIN_ROLE               = 0x00;
+    bytes32 private constant HOOK_SET_ROLE                    = keccak256("HOOK_SET_ROLE");
+    bytes32 private constant NETWORK_LIMIT_SET_ROLE           = keccak256("NETWORK_LIMIT_SET_ROLE");
+    bytes32 private constant OPERATOR_NETWORK_SHARES_SET_ROLE = keccak256("OPERATOR_NETWORK_SHARES_SET_ROLE");
 
     function test_networkDelegatorEventsInHistory() public {
         // fetch *all* logs from deploymentBlock → latest
-        uint256 deploymentBlock = 22698266;
         VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
-            deploymentBlock,
+            START_BLOCK,
             block.number,
             NETWORK_DELEGATOR,
             new bytes32[](0)
         );
 
-        // scan them for all NetworkDelegator event signatures
-        for (uint i = 0; i < allLogs.length; i++) {
-            bytes32 sig = allLogs[i].topics[0];
-            assertTrue(
-                sig == ROLE_GRANTED_SIG ||
-                sig == INITIALIZED_SIG,
-                "Unknown NetworkDelegator event found!"
-            );
-        }
+        assertEq(allLogs.length, 5, "Incorrect number of logs");
+
+        bytes32 multisig = _toBytes32(OWNER_MULTISIG);
+
+        _assertLogs(allLogs[0], ROLE_GRANTED_SIG, NETWORK_LIMIT_SET_ROLE,           multisig,   DELEGATOR_FACTORY);
+        _assertLogs(allLogs[1], ROLE_GRANTED_SIG, OPERATOR_NETWORK_SHARES_SET_ROLE, multisig,   DELEGATOR_FACTORY);
+        _assertLogs(allLogs[2], ROLE_GRANTED_SIG, DEFAULT_ADMIN_ROLE,               multisig,   DELEGATOR_FACTORY);
+        _assertLogs(allLogs[3], ROLE_GRANTED_SIG, HOOK_SET_ROLE,                    multisig,   DELEGATOR_FACTORY);
+
+        assertEq(allLogs[4].topics[0],     INITIALIZED_SIG);
+        assertEq(allLogs[4].topics.length, 1);
     }
 
 }
 
-contract BurnerRouterDeploymentEventsTest is BaseTest {
+contract BurnerRouterDeploymentEventsTest is EventsTest {
 
     // BURNER_ROUTER event signatures
     bytes32 private constant INITIALIZED_SIG =
@@ -224,9 +217,8 @@ contract BurnerRouterDeploymentEventsTest is BaseTest {
 
     function test_burnerRouterEventsInHistory() public {
         // fetch *all* logs from deploymentBlock → latest
-        uint256 deploymentBlock = 22698025;
         VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
-            deploymentBlock,
+            START_BLOCK,
             block.number,
             BURNER_ROUTER,
             new bytes32[](0)
@@ -240,7 +232,7 @@ contract BurnerRouterDeploymentEventsTest is BaseTest {
 
 }
 
-contract StakedSPKVaultDeploymentEventsTest is BaseTest {
+contract StakedSPKVaultDeploymentEventsTest is EventsTest {
 
     // SPK_VAULT event signatures
     bytes32 private constant TRANSFER_SIG =
@@ -264,10 +256,9 @@ contract StakedSPKVaultDeploymentEventsTest is BaseTest {
 
     function test_spkVaultEventsInHistory() public {
         // fetch *all* logs from deploymentBlock → latest
-        uint256 deploymentBlock = 22698266;
         VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
-            deploymentBlock,
-            deploymentBlock,
+            START_BLOCK,
+            block.number,
             STAKED_SPK_VAULT,
             new bytes32[](0)
         );
@@ -292,7 +283,7 @@ contract StakedSPKVaultDeploymentEventsTest is BaseTest {
 
 }
 
-contract VetoSlasherDeploymentEventsTest is BaseTest {
+contract VetoSlasherDeploymentEventsTest is EventsTest {
 
     // VETO_SLASHER event signatures
     bytes32 private constant INITIALIZED_SIG =
@@ -300,9 +291,8 @@ contract VetoSlasherDeploymentEventsTest is BaseTest {
 
     function test_vetoSlasherEventsInHistory() public {
         // fetch *all* logs from deploymentBlock → latest
-        uint256 deploymentBlock = 22698266;
         VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
-            deploymentBlock,
+            START_BLOCK,
             block.number,
             VETO_SLASHER,
             new bytes32[](0)
