@@ -520,10 +520,10 @@ contract SlashingTest is BaseTest {
         uint256 sSpkBalanceAfter = spk.balanceOf(address(sSpk));
 
         // Verify slashing occurred with exact amounts
-        assertEq(totalStakeAfter,     totalStakeBefore - slashedAmount,  "Total stake should decrease by exact slashed amount");
-        assertEq(sSpkBalanceAfter,    sSpkBalanceBefore - slashedAmount, "Vault balance should decrease by exact slashed amount");
-        assertGt(slashedAmount, 0,                                       "Should have slashed a positive amount");
-        assertLe(slashedAmount, slashAmount,                             "Slashed amount should not exceed requested amount");
+        assertEq(totalStakeAfter,  totalStakeBefore - slashedAmount,  "Total stake should decrease by exact slashed amount");
+        assertEq(sSpkBalanceAfter, sSpkBalanceBefore - slashedAmount, "Vault balance should decrease by exact slashed amount");
+        assertGt(slashedAmount,    0,                                 "Should have slashed a positive amount");
+        assertLe(slashedAmount,    slashAmount,                       "Slashed amount should not exceed requested amount");
 
         // Shares should remain the same (slashing doesn't burn shares, just reduces their value)
         assertEq(sSpk.balanceOf(alice), aliceSharesBefore, "Alice's shares should remain unchanged");
