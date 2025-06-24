@@ -94,14 +94,14 @@ abstract contract BaseTest is Test {
 
         vm.startPrank(HYPERLANE_NETWORK);
         middlewareService.setMiddleware(HYPERLANE_NETWORK);
-        delegator.setMaxNetworkLimit(0, 100_000e18);
+        delegator.setMaxNetworkLimit(0, 2_000_000e18);
         slasher.setResolver(0, OWNER_MULTISIG, "");
         vm.stopPrank();
 
         // --- Step 2: Configure the network and operator to take control of 100k SPK stake as the vault owner
 
         vm.startPrank(OWNER_MULTISIG);
-        delegator.setNetworkLimit(subnetwork, 100_000e18);
+        delegator.setNetworkLimit(subnetwork, 2_000_000e18);
         delegator.setOperatorNetworkShares(
             subnetwork,
             OPERATOR,

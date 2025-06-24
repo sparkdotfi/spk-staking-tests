@@ -37,8 +37,8 @@ contract GovernanceSlashingTest is BaseTest {
 
         // Demonstrate that the slashable stake is 100k SPK at the deposit and capture timestamps, and 0 before deposit
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp - 1, ""), 0);
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp,     ""), 100_000e18);
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp,     ""), 100_000e18);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp,     ""), 2_000_000e18);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp,     ""), 2_000_000e18);
 
         vm.prank(HYPERLANE_NETWORK);
         uint256 slashIndex = slasher.requestSlash(subnetwork, OPERATOR, 10_000_000e18, captureTimestamp, "");
@@ -47,7 +47,7 @@ contract GovernanceSlashingTest is BaseTest {
 
         ( ,, uint256 amount,,, bool completed ) = slasher.slashRequests(slashIndex);
 
-        assertEq(amount,    100_000e18);  // Can't request to slash more than the network limit (requested full 10m)
+        assertEq(amount,    2_000_000e18);  // Can't request to slash more than the network limit (requested full 10m)
         assertEq(completed, false);
 
         // --- Step 3: Fast-forward past veto window and execute the slash
@@ -58,7 +58,7 @@ contract GovernanceSlashingTest is BaseTest {
         assertEq(sSpk.activeBalanceOf(bob),   4_000_000e18);
         assertEq(sSpk.totalStake(),           TOTAL_STAKE + 10_000_000e18);
 
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 100_000e18);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 2_000_000e18);
 
         assertEq(spk.balanceOf(address(sSpk)), TOTAL_STAKE + 10_000_000e18);
         assertEq(spk.balanceOf(BURNER_ROUTER), 0);
@@ -73,22 +73,29 @@ contract GovernanceSlashingTest is BaseTest {
 
         assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 0);
 
-        assertApproxEqAbs(sSpk.activeBalanceOf(alice), 6_000_000e18 - (100_000e18 * 6_000_000e18 / sSpk.totalStake()), 100e18);  // Proportional slash
-        assertApproxEqAbs(sSpk.activeBalanceOf(bob),   4_000_000e18 - (100_000e18 * 4_000_000e18 / sSpk.totalStake()), 100e18);  // Proportional slash
+        // Show that active stake is reduced proportionally with withdrawals
+        assertEq(sSpk.activeStake(), ACTIVE_STAKE + 10_000_000e18 - 2_000_000e18 * sSpk.activeStake() / sSpk.totalStake());
 
-        assertEq(sSpk.totalStake(), TOTAL_STAKE + 10_000_000e18 - 100_000e18);
+        // Show that active balance is reduced proportionally with withdrawals
+        assertEq(sSpk.activeBalanceOf(alice), 6_000_000e18 * sSpk.activeStake() / sSpk.activeShares());
+        assertEq(sSpk.activeBalanceOf(bob),   4_000_000e18 * sSpk.activeStake() / sSpk.activeShares());
+
+        assertEq(sSpk.activeBalanceOf(alice), 5_758_950.300616223287308507e18);
+        assertEq(sSpk.activeBalanceOf(bob),   3_839_300.200410815524872338e18);
+
+        assertEq(sSpk.totalStake(), TOTAL_STAKE + 10_000_000e18 - 2_000_000e18);
 
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 0);
 
-        assertEq(spk.balanceOf(address(sSpk)), TOTAL_STAKE + 10_000_000e18 - 100_000e18);
-        assertEq(spk.balanceOf(BURNER_ROUTER), 100_000e18);
+        assertEq(spk.balanceOf(address(sSpk)), TOTAL_STAKE + 10_000_000e18 - 2_000_000e18);
+        assertEq(spk.balanceOf(BURNER_ROUTER), 2_000_000e18);
 
         assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), captureTimestamp);
-        assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR),               100_000e18);
+        assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR),               2_000_000e18);
 
         ( ,, amount,,, completed ) = slasher.slashRequests(slashIndex);
 
-        assertEq(amount,    100_000e18);
+        assertEq(amount,    2_000_000e18);
         assertEq(completed, true);
 
         uint256 governanceBalance = spk.balanceOf(SPARK_GOVERNANCE);
@@ -99,7 +106,7 @@ contract GovernanceSlashingTest is BaseTest {
         IBurnerRouter(BURNER_ROUTER).triggerTransfer(SPARK_GOVERNANCE);
 
         assertEq(spk.balanceOf(BURNER_ROUTER),    0);
-        assertEq(spk.balanceOf(SPARK_GOVERNANCE), governanceBalance + 100_000e18);
+        assertEq(spk.balanceOf(SPARK_GOVERNANCE), governanceBalance + 2_000_000e18);
 
         // --- Step 5: Show that slasher cannot slash anymore with the same request
 
@@ -159,7 +166,7 @@ contract GovernanceSlashingTest is BaseTest {
 
         ( ,, uint256 amount,,, bool completed ) = slasher.slashRequests(slashIndex);
 
-        assertEq(amount,    100_000e18);  // Can't request to slash more than the network limit (requested full 10m)
+        assertEq(amount,    2_000_000e18);  // Can't request to slash more than the network limit (requested full 10m)
         assertEq(completed, false);
 
         // --- Step 3: Owner multisig vetos the slash request
@@ -171,7 +178,7 @@ contract GovernanceSlashingTest is BaseTest {
 
         ( ,, amount,,, completed ) = slasher.slashRequests(slashIndex);
 
-        assertEq(amount,    100_000e18);
+        assertEq(amount,    2_000_000e18);
         assertEq(completed, true);  // Prevents execution of the slash
 
         // --- Step 4: Attempt to execute the slashing after veto (should fail)
