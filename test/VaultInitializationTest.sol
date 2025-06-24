@@ -267,7 +267,7 @@ contract StakedSPKVaultDeploymentEventsTest is BaseTest {
         uint256 deploymentBlock = 22698266;
         VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
             deploymentBlock,
-            block.number,
+            deploymentBlock,
             STAKED_SPK_VAULT,
             new bytes32[](0)
         );

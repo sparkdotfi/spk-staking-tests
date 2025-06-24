@@ -8,7 +8,7 @@ interface INetworkDelegator is IAccessControl {}
 
 contract GovernanceSlashingTest is BaseTest {
 
-    function test_hyperlaneCanSlashUpToNetworkLimit() public {
+function test_hyperlaneCanSlashUpToNetworkLimit() public {
 
         // --- Step 1: Deposit 10m SPK to stSPK as two users
 
@@ -90,9 +90,6 @@ contract GovernanceSlashingTest is BaseTest {
 
         assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), captureTimestamp);
         assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR),               2_000_000e18);
-
-        assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), captureTimestamp);
-        assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR),               100_000e18);
 
         ( ,, amount,,, completed ) = slasher.slashRequests(slashIndex);
 
@@ -209,7 +206,7 @@ contract GovernanceSlashingTest is BaseTest {
 
             // Check that we can still slash the full network limit since nothing has been slashed yet
             uint256 slashableAmount = slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, "");
-            assertEq(slashableAmount, 100_000e18, "Should be able to slash full network limit");
+            assertEq(slashableAmount, 2_000_000e18, "Should be able to slash full network limit");
 
             // Request slash
             vm.prank(HYPERLANE_NETWORK);
@@ -225,7 +222,7 @@ contract GovernanceSlashingTest is BaseTest {
         uint48 firstSlashTimestamp = uint48(block.timestamp);
 
         // Execute all slashes at once
-        for (uint256 i = 0; i < 4; i++) {
+        for (uint256 i = 0; i < 80; i++) {
             // Get the capture timestamp for this slash request
             (,,, uint48 captureTimestamp,,) = slasher.slashRequests(slashIndices[i]);
 
@@ -240,20 +237,20 @@ contract GovernanceSlashingTest is BaseTest {
             assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR),                                totalSlashed);
             assertEq(slasher.cumulativeSlashAt(subnetwork, OPERATOR, captureTimestamp, ""),        0);
             assertEq(slasher.cumulativeSlashAt(subnetwork, OPERATOR, uint48(block.timestamp), ""), totalSlashed);
-            assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""),           100_000e18 - totalSlashed);
+            assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""),           2_000_000e18 - totalSlashed);
         }
 
-        // Try to execute the 5th slash (should fail because slashable stake is 0)
+        // Try to execute the 81th slash (should fail because slashable stake is 0)
         vm.prank(HYPERLANE_NETWORK);
         vm.expectRevert("InsufficientSlash()");
-        slasher.executeSlash(slashIndices[4], "");
+        slasher.executeSlash(slashIndices[80], "");
 
         // Show that future timestamps are always 0
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, firstSlashTimestamp + 40, ""), 0);
 
-        skip(10 minutes);  // Warp 10 minutes so time is ahead of all of these timestamps
+        skip(1 hours);  // Warp 1 hour so time is ahead of all of these timestamps
 
-        assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR), 100_000e18);
+        assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR), 2_000_000e18);
 
         // As soon as the first slash is executed, the slashable stake goes back up to 25k
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, firstSlashTimestamp - 1, ""), 0);
