@@ -15,21 +15,21 @@ contract SetIsDepositLimitFailureTests is BaseTest {
             )
         );
         vm.prank(alice);
-        sSpk.setIsDepositLimit(true);
+        stSpk.setIsDepositLimit(true);
     }
 
     function test_setIsDepositLimit_alreadySet() public {
         vm.prank(OWNER_MULTISIG);
-        sSpk.setIsDepositLimit(true);
+        stSpk.setIsDepositLimit(true);
 
         vm.expectRevert("AlreadySet()");
         vm.prank(OWNER_MULTISIG);
-        sSpk.setIsDepositLimit(true);
+        stSpk.setIsDepositLimit(true);
 
         // Can set a new value if it's different from the previous value
         vm.prank(OWNER_MULTISIG);
-        sSpk.setIsDepositLimit(false);
-        assertFalse(sSpk.isDepositLimit(), "Deposit limit enabled");
+        stSpk.setIsDepositLimit(false);
+        assertFalse(stSpk.isDepositLimit(), "Deposit limit enabled");
     }
 
 }
@@ -40,11 +40,11 @@ contract SetIsDepositLimitSuccessTests is BaseTest {
 
     function test_setIsDepositLimit() public {
         vm.prank(OWNER_MULTISIG);
-        vm.expectEmit(address(sSpk));
+        vm.expectEmit(address(stSpk));
         emit SetIsDepositLimit(true);
-        sSpk.setIsDepositLimit(true);
+        stSpk.setIsDepositLimit(true);
 
-        assertTrue(sSpk.isDepositLimit(), "Deposit limit not enabled");
+        assertTrue(stSpk.isDepositLimit(), "Deposit limit not enabled");
     }
 
 }
@@ -61,22 +61,22 @@ contract SetDepositLimitFailureTests is BaseTest {
             )
         );
         vm.prank(alice);
-        sSpk.setDepositLimit(1_000_000e18);
+        stSpk.setDepositLimit(1_000_000e18);
     }
 
     function test_setDepositLimit_alreadySet() public {
         vm.prank(OWNER_MULTISIG);
-        sSpk.setDepositLimit(1_000_000e18);
+        stSpk.setDepositLimit(1_000_000e18);
 
         vm.expectRevert("AlreadySet()");
         vm.prank(OWNER_MULTISIG);
-        sSpk.setDepositLimit(1_000_000e18);
+        stSpk.setDepositLimit(1_000_000e18);
 
         // Can set a new deposit limit if it's different from the previous limit
         uint256 newLimit2 = 2_000_000e18; // 2M SPK limit
         vm.prank(OWNER_MULTISIG);
-        sSpk.setDepositLimit(newLimit2);
-        assertEq(sSpk.depositLimit(), newLimit2, "Deposit limit not set correctly");
+        stSpk.setDepositLimit(newLimit2);
+        assertEq(stSpk.depositLimit(), newLimit2, "Deposit limit not set correctly");
     }
 
 }
@@ -89,11 +89,11 @@ contract SetDepositLimitSuccessTests is BaseTest {
         uint256 newLimit = 1_000_000e18; // 1M SPK limit
 
         vm.prank(OWNER_MULTISIG);
-        vm.expectEmit(address(sSpk));
+        vm.expectEmit(address(stSpk));
         emit SetDepositLimit(newLimit);
-        sSpk.setDepositLimit(newLimit);
+        stSpk.setDepositLimit(newLimit);
 
-        assertEq(sSpk.depositLimit(), newLimit, "Deposit limit not set correctly");
+        assertEq(stSpk.depositLimit(), newLimit, "Deposit limit not set correctly");
     }
 
 }
@@ -110,21 +110,21 @@ contract SetDepositWhitelistFailureTests is BaseTest {
             )
         );
         vm.prank(alice);
-        sSpk.setDepositWhitelist(true);
+        stSpk.setDepositWhitelist(true);
     }
 
     function test_setDepositWhitelist_alreadySet() public {
         vm.prank(OWNER_MULTISIG);
-        sSpk.setDepositWhitelist(true);
+        stSpk.setDepositWhitelist(true);
 
         vm.expectRevert("AlreadySet()");
         vm.prank(OWNER_MULTISIG);
-        sSpk.setDepositWhitelist(true);
+        stSpk.setDepositWhitelist(true);
 
         // Can set a new value if it's different from the previous value
         vm.prank(OWNER_MULTISIG);
-        sSpk.setDepositWhitelist(false);
-        assertFalse(sSpk.depositWhitelist(), "Deposit whitelist not disabled");
+        stSpk.setDepositWhitelist(false);
+        assertFalse(stSpk.depositWhitelist(), "Deposit whitelist not disabled");
     }
 
 }
@@ -135,11 +135,11 @@ contract SetDepositWhitelistSuccessTests is BaseTest {
 
     function test_setDepositWhitelist() public {
         vm.prank(OWNER_MULTISIG);
-        vm.expectEmit(address(sSpk));
+        vm.expectEmit(address(stSpk));
         emit SetDepositWhitelist(true);
-        sSpk.setDepositWhitelist(true);
+        stSpk.setDepositWhitelist(true);
 
-        assertTrue(sSpk.depositWhitelist(), "Deposit whitelist not enabled");
+        assertTrue(stSpk.depositWhitelist(), "Deposit whitelist not enabled");
     }
 
 }
@@ -156,28 +156,28 @@ contract SetDepositorWhitelistStatusFailureTests is BaseTest {
             )
         );
         vm.prank(alice);
-        sSpk.setDepositorWhitelistStatus(alice, true);
+        stSpk.setDepositorWhitelistStatus(alice, true);
     }
 
     function test_setDepositorWhitelistStatus_invalidAccount() public {
         vm.expectRevert("InvalidAccount()");
         vm.prank(OWNER_MULTISIG);
-        sSpk.setDepositorWhitelistStatus(address(0), true);
+        stSpk.setDepositorWhitelistStatus(address(0), true);
     }
 
     function test_setDepositorWhitelistStatus_alreadySet() public {
         vm.prank(OWNER_MULTISIG);
-        sSpk.setDepositorWhitelistStatus(alice, true);
+        stSpk.setDepositorWhitelistStatus(alice, true);
 
         vm.expectRevert("AlreadySet()");
         vm.prank(OWNER_MULTISIG);
-        sSpk.setDepositorWhitelistStatus(alice, true);
+        stSpk.setDepositorWhitelistStatus(alice, true);
 
         // Can set a new value if it's different from the previous value
         vm.prank(OWNER_MULTISIG);
-        sSpk.setDepositorWhitelistStatus(alice, false);
+        stSpk.setDepositorWhitelistStatus(alice, false);
 
-        assertFalse(sSpk.isDepositorWhitelisted(alice), "Alice not whitelisted");
+        assertFalse(stSpk.isDepositorWhitelisted(alice), "Alice not whitelisted");
     }
 
 }
@@ -188,17 +188,17 @@ contract SetDepositorWhitelistStatusSuccessTests is BaseTest {
 
     function test_setDepositorWhitelistStatus() public {
         vm.prank(OWNER_MULTISIG);
-        vm.expectEmit(address(sSpk));
+        vm.expectEmit(address(stSpk));
         emit SetDepositorWhitelistStatus(alice, true);
-        sSpk.setDepositorWhitelistStatus(alice, true);
+        stSpk.setDepositorWhitelistStatus(alice, true);
 
-        assertTrue(sSpk.isDepositorWhitelisted(alice), "Alice not whitelisted");
+        assertTrue(stSpk.isDepositorWhitelisted(alice), "Alice not whitelisted");
 
         // Should whitelist a new user
         vm.prank(OWNER_MULTISIG);
-        sSpk.setDepositorWhitelistStatus(bob, true);
+        stSpk.setDepositorWhitelistStatus(bob, true);
 
-        assertTrue(sSpk.isDepositorWhitelisted(bob), "Bob not whitelisted");
+        assertTrue(stSpk.isDepositorWhitelisted(bob), "Bob not whitelisted");
     }
 
 }
