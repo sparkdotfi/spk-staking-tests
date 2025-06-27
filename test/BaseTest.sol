@@ -32,6 +32,7 @@ abstract contract BaseTest is Test {
     address constant NETWORK_DELEGATOR = 0x2C5bF9E8e16716A410644d6b4979d74c1951952d;
     address constant STAKED_SPK_VAULT  = 0xc6132FAF04627c8d05d6E759FAbB331Ef2D8F8fD;
     address constant VETO_SLASHER      = 0x4BaaEB2Bf1DC32a2Fb2DaA4E7140efb2B5f8cAb7;
+    address constant RESET_HOOK        = 0xC3B87BbE976f5Bfe4Dc4992ae4e22263Df15ccBE;
 
     // Actors
     address constant HYPERLANE_NETWORK = 0x59cf937Ea9FA9D7398223E3aA33d92F7f5f986A2;
@@ -47,6 +48,10 @@ abstract contract BaseTest is Test {
     uint48 constant EPOCH_DURATION        = 2 weeks;
     uint48 constant SLASHER_VETO_DURATION = 3 days;
 
+    // Constants based on forked state
+    uint256 ACTIVE_STAKE;
+    uint256 TOTAL_STAKE;
+
     // Test users
     address alice    = makeAddr("alice");
     address attacker = makeAddr("attacker");
@@ -59,7 +64,7 @@ abstract contract BaseTest is Test {
     IStakedSPK     sSpk         = IStakedSPK(STAKED_SPK_VAULT);  // For accessing ERC20 functions
     IVetoSlasher   slasher      = IVetoSlasher(VETO_SLASHER);
 
-    INetworkRestakeDelegator  delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
+    INetworkRestakeDelegator delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
 
     INetworkMiddlewareService middlewareService;
 
@@ -70,7 +75,10 @@ abstract contract BaseTest is Test {
     /**********************************************************************************************/
 
     function setUp() public virtual {
-        vm.createSelectFork(getChain("mainnet").rpcUrl, 22698495);  // June 14, 2025
+        vm.createSelectFork(getChain("mainnet").rpcUrl, 22769489);  // June 14, 2025
+
+        ACTIVE_STAKE = sSpk.activeStake();
+        TOTAL_STAKE  = sSpk.totalStake();
 
         middlewareService = INetworkMiddlewareService(slasher.NETWORK_MIDDLEWARE_SERVICE());
 
@@ -86,19 +94,21 @@ abstract contract BaseTest is Test {
 
         vm.startPrank(HYPERLANE_NETWORK);
         middlewareService.setMiddleware(HYPERLANE_NETWORK);
-        delegator.setMaxNetworkLimit(0, 100_000e18);
+        delegator.setMaxNetworkLimit(0, 2_000_000e18);
         slasher.setResolver(0, OWNER_MULTISIG, "");
         vm.stopPrank();
 
-        // --- Step 2: Configure the network and operator to take control of 100k SPK stake as the vault owner
+        // --- Step 2: Configure the network and operator to take control of 2m SPK stake as the vault owner
 
         vm.startPrank(OWNER_MULTISIG);
-        delegator.setNetworkLimit(subnetwork, 100_000e18);
+        delegator.setNetworkLimit(subnetwork, 2_000_000e18);
         delegator.setOperatorNetworkShares(
             subnetwork,
             OPERATOR,
             1e18  // 100% shares
         );
+        delegator.setHook(RESET_HOOK);
+        IAccessControl(address(delegator)).grantRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK);
         vm.stopPrank();
 
         assertEq(delegator.totalOperatorNetworkSharesAt(subnetwork, uint48(block.timestamp), ""), 1e18);

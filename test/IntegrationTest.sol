@@ -78,7 +78,7 @@ contract IntegrationTest is BaseTest {
 
         // Check delegation (funds should be managed by delegator)
         uint256 totalStake = sSpk.totalStake();
-        assertEq(totalStake, depositAmount + 1e18, "Total stake should include at least Alice's deposit");
+        assertEq(totalStake, TOTAL_STAKE + depositAmount + 1e18, "Total stake should include at least Alice's deposit");
 
         // Withdrawal
         uint256 withdrawAmount = 500e18;
@@ -155,7 +155,7 @@ contract IntegrationTest is BaseTest {
         uint256 withdrawalEpoch = currentEpoch + 1;
         vm.prank(alice);
         uint256 claimedAmount = sSpk.claim(alice, withdrawalEpoch);
-        uint256 expectedClaimedAmount = withdrawAmount - (withdrawAmount * slashAmount / (depositAmount + 1e18));
+        uint256 expectedClaimedAmount = withdrawAmount - (withdrawAmount * slashAmount / (TOTAL_STAKE + depositAmount + 1e18));
 
         // Allow for small rounding errors
         assertApproxEqAbs(claimedAmount, expectedClaimedAmount, 1, "Alice should still be able to claim and exit");
