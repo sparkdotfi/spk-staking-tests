@@ -15,14 +15,14 @@ contract IntegrationTest is BaseTest {
         // Step 1: Deposit
         vm.startPrank(alice);
         uint256 initialBalance = spk.balanceOf(alice);
-        spk.approve(address(sSpk), depositAmount);
-        ( uint256 deposited, uint256 sharesReceived ) = sSpk.deposit(alice, depositAmount);
+        spk.approve(address(stSpk), depositAmount);
+        ( uint256 deposited, uint256 sharesReceived ) = stSpk.deposit(alice, depositAmount);
 
         // Step 2: Wait some time and withdraw
         vm.warp(block.timestamp + 1 days);
-        uint256 currentEpoch = sSpk.currentEpoch();
-        uint256 currentEpochStart = sSpk.currentEpochStart();
-        ( uint256 sharesBurned, uint256 withdrawalShares ) = sSpk.withdraw(alice, withdrawAmount);
+        uint256 currentEpoch = stSpk.currentEpoch();
+        uint256 currentEpochStart = stSpk.currentEpochStart();
+        ( uint256 sharesBurned, uint256 withdrawalShares ) = stSpk.withdraw(alice, withdrawAmount);
 
         vm.stopPrank();
 
@@ -32,7 +32,7 @@ contract IntegrationTest is BaseTest {
 
         uint256 withdrawalEpoch = currentEpoch + 1;
         vm.prank(alice);
-        uint256 claimed = sSpk.claim(alice, withdrawalEpoch);
+        uint256 claimed = stSpk.claim(alice, withdrawalEpoch);
 
         // Basic verifications with precise assertions
         assertEq(deposited,      depositAmount,  "Should have deposited exact amount");
@@ -54,35 +54,35 @@ contract IntegrationTest is BaseTest {
     }
 
     function test_e2e_vaultEcosystemIntegration() public {
-        // Comprehensive test of sSpk interaction with Symbiotic ecosystem
+        // Comprehensive test of stSpk interaction with Symbiotic ecosystem
         _initializeEpochSystem();
 
-        // 1. Verify sSpk is properly integrated with ecosystem components
-        assertEq(sSpk.delegator(),       NETWORK_DELEGATOR, "Should use network delegator");
-        assertEq(sSpk.slasher(),         VETO_SLASHER,      "Should use veto slasher");
-        assertEq(address(sSpk.burner()), BURNER_ROUTER,     "Should use burner router");
+        // 1. Verify stSpk is properly integrated with ecosystem components
+        assertEq(stSpk.delegator(),       NETWORK_DELEGATOR, "Should use network delegator");
+        assertEq(stSpk.slasher(),         VETO_SLASHER,      "Should use veto slasher");
+        assertEq(address(stSpk.burner()), BURNER_ROUTER,     "Should use burner router");
 
-        // 2. Test that sSpk delegation is working
-        assertTrue(sSpk.isDelegatorInitialized(), "Delegator should be initialized");
-        assertTrue(sSpk.isSlasherInitialized(),   "Slasher should be initialized");
+        // 2. Test that stSpk delegation is working
+        assertTrue(stSpk.isDelegatorInitialized(), "Delegator should be initialized");
+        assertTrue(stSpk.isSlasherInitialized(),   "Slasher should be initialized");
 
-        // 3. Verify sSpk can handle the full staking lifecycle
+        // 3. Verify stSpk can handle the full staking lifecycle
         uint256 depositAmount = 1000e18;
 
         // Deposit
         vm.startPrank(alice);
-        spk.approve(address(sSpk), depositAmount);
-        ( uint256 deposited, uint256 shares ) = sSpk.deposit(alice, depositAmount);
+        spk.approve(address(stSpk), depositAmount);
+        ( uint256 deposited, uint256 shares ) = stSpk.deposit(alice, depositAmount);
         assertEq(deposited, depositAmount, "Should deposit exact amount");
-        assertEq(shares,    depositAmount, "Should mint shares on deposit"); // Share calculation depends on sSpk state
+        assertEq(shares,    depositAmount, "Should mint shares on deposit"); // Share calculation depends on stSpk state
 
         // Check delegation (funds should be managed by delegator)
-        uint256 totalStake = sSpk.totalStake();
+        uint256 totalStake = stSpk.totalStake();
         assertEq(totalStake, TOTAL_STAKE + depositAmount + 1e18, "Total stake should include at least Alice's deposit");
 
         // Withdrawal
         uint256 withdrawAmount = 500e18;
-        ( uint256 burnedShares, uint256 withdrawalShares ) = sSpk.withdraw(alice, withdrawAmount);
+        ( uint256 burnedShares, uint256 withdrawalShares ) = stSpk.withdraw(alice, withdrawAmount);
         vm.stopPrank();
 
         // Verify proportional share burning: burned shares = (total shares * withdraw amount) / deposit amount
@@ -92,17 +92,17 @@ contract IntegrationTest is BaseTest {
 
         // Slashing (simulates network detecting misbehavior)
         uint256 slashAmount = 100e18;
-        uint256 initialBurnerSpkBalance = spk.balanceOf(address(sSpk.burner()));
+        uint256 initialBurnerSpkBalance = spk.balanceOf(address(stSpk.burner()));
         vm.prank(VETO_SLASHER);
-        sSpk.onSlash(slashAmount, uint48(block.timestamp));
+        stSpk.onSlash(slashAmount, uint48(block.timestamp));
 
         // Verify ecosystem still functions after slashing
-        uint256 newTotalStake = sSpk.totalStake();
+        uint256 newTotalStake = stSpk.totalStake();
         assertEq(newTotalStake, totalStake - slashAmount, "Slashing should reduce total stake by exact slash amount");
 
         // 4. Test that burner integration works (for slashed funds)
-        assertEq(address(sSpk.burner()),                BURNER_ROUTER,                         "Burner should be properly set");
-        assertEq(spk.balanceOf(address(sSpk.burner())), initialBurnerSpkBalance + slashAmount, "Burner should have received slashed tokens");
+        assertEq(address(stSpk.burner()),                BURNER_ROUTER,                         "Burner should be properly set");
+        assertEq(spk.balanceOf(address(stSpk.burner())), initialBurnerSpkBalance + slashAmount, "Burner should have received slashed tokens");
 
         // The ecosystem integration test shows that all components work together
         assertTrue(true, "Vault ecosystem integration working correctly");
@@ -117,14 +117,14 @@ contract IntegrationTest is BaseTest {
         // Alice deposits and wants to unstake if slashing occurs
         uint256 depositAmount = 3000e18;
         vm.startPrank(alice);
-        spk.approve(address(sSpk), depositAmount);
-        sSpk.deposit(alice, depositAmount);
+        spk.approve(address(stSpk), depositAmount);
+        stSpk.deposit(alice, depositAmount);
 
         // Alice initiates withdrawal (starts 28-day unstaking process)
         uint256 withdrawAmount = 2000e18;
-        uint256 currentEpoch = sSpk.currentEpoch();
-        uint256 currentEpochStart = sSpk.currentEpochStart();
-        sSpk.withdraw(alice, withdrawAmount);
+        uint256 currentEpoch = stSpk.currentEpoch();
+        uint256 currentEpochStart = stSpk.currentEpochStart();
+        stSpk.withdraw(alice, withdrawAmount);
         vm.stopPrank();
 
         // Calculate when Alice can claim (28 days from epoch start)
@@ -146,7 +146,7 @@ contract IntegrationTest is BaseTest {
         // Simulate slashing during Alice's unstaking period
         uint256 slashAmount = 300e18;
         vm.prank(VETO_SLASHER);
-        sSpk.onSlash(slashAmount, uint48(block.timestamp));
+        stSpk.onSlash(slashAmount, uint48(block.timestamp));
 
         // Fast forward to when Alice can claim
         vm.warp(aliceClaimTime + 1);
@@ -154,7 +154,7 @@ contract IntegrationTest is BaseTest {
         // Alice can still claim her withdrawal despite slashing
         uint256 withdrawalEpoch = currentEpoch + 1;
         vm.prank(alice);
-        uint256 claimedAmount = sSpk.claim(alice, withdrawalEpoch);
+        uint256 claimedAmount = stSpk.claim(alice, withdrawalEpoch);
         uint256 expectedClaimedAmount = withdrawAmount - (withdrawAmount * slashAmount / (TOTAL_STAKE + depositAmount + 1e18));
 
         // Allow for small rounding errors
@@ -179,13 +179,13 @@ contract IntegrationTest is BaseTest {
         // All users deposit
         for (uint256 i = 0; i < users.length; i++) {
             vm.startPrank(users[i]);
-            spk.approve(address(sSpk), depositAmounts[i]);
-            sSpk.deposit(users[i], depositAmounts[i]);
+            spk.approve(address(stSpk), depositAmounts[i]);
+            stSpk.deposit(users[i], depositAmounts[i]);
             vm.stopPrank();
         }
 
         // Record initial total stake
-        uint256 totalStakeInitial = sSpk.totalStake();
+        uint256 totalStakeInitial = stSpk.totalStake();
         uint256 expectedTotalStake = depositAmounts[0] + depositAmounts[1] + depositAmounts[2];
         assertGe(totalStakeInitial, expectedTotalStake, "Total stake should include all user deposits");
 
@@ -194,22 +194,22 @@ contract IntegrationTest is BaseTest {
         uint256 bobWithdrawAmount = 1000e18;
 
         vm.startPrank(alice);
-        uint256 currentEpoch = sSpk.currentEpoch();
-        uint256 currentEpochStart = sSpk.currentEpochStart();
-        sSpk.withdraw(alice, aliceWithdrawAmount);
+        uint256 currentEpoch = stSpk.currentEpoch();
+        uint256 currentEpochStart = stSpk.currentEpochStart();
+        stSpk.withdraw(alice, aliceWithdrawAmount);
         vm.stopPrank();
 
         vm.startPrank(bob);
-        sSpk.withdraw(bob, bobWithdrawAmount);
+        stSpk.withdraw(bob, bobWithdrawAmount);
         vm.stopPrank();
 
         // Simulate slashing event
         uint256 slashAmount = 1000e18; // Slash 1k SPK
         vm.prank(VETO_SLASHER);
-        sSpk.onSlash(slashAmount, uint48(block.timestamp));
+        stSpk.onSlash(slashAmount, uint48(block.timestamp));
 
         // Verify slashing affected total stake
-        uint256 totalStakeAfterSlash = sSpk.totalStake();
+        uint256 totalStakeAfterSlash = stSpk.totalStake();
         assertEq(totalStakeAfterSlash, totalStakeInitial - slashAmount, "Slashing should reduce total stake by exact slash amount");
 
         // Fast forward to claim time
@@ -220,10 +220,10 @@ contract IntegrationTest is BaseTest {
         uint256 withdrawalEpoch = currentEpoch + 1;
 
         vm.prank(alice);
-        uint256 aliceClaimedAmount = sSpk.claim(alice, withdrawalEpoch);
+        uint256 aliceClaimedAmount = stSpk.claim(alice, withdrawalEpoch);
 
         vm.prank(bob);
-        uint256 bobClaimedAmount = sSpk.claim(bob, withdrawalEpoch);
+        uint256 bobClaimedAmount = stSpk.claim(bob, withdrawalEpoch);
 
         // Verify claims worked with realistic amounts (may be affected by slashing)
         assertGt(aliceClaimedAmount, 0, "Alice should receive some tokens");
@@ -237,11 +237,11 @@ contract IntegrationTest is BaseTest {
         assertLt(bobDifference,   bobWithdrawAmount / 10,   "Bob's claim should be reasonably close to withdraw amount");
 
         // Charlie (who didn't withdraw) still has his shares
-        uint256 charlieShares = sSpk.balanceOf(charlie);
-        assertGt(charlieShares, 0, "Charlie should still have shares"); // Share amount depends on sSpk state
+        uint256 charlieShares = stSpk.balanceOf(charlie);
+        assertGt(charlieShares, 0, "Charlie should still have shares"); // Share amount depends on stSpk state
 
-        // Verify the sSpk still functions after the complex scenario
-        uint256 finalTotalStake = sSpk.totalStake();
+        // Verify the stSpk still functions after the complex scenario
+        uint256 finalTotalStake = stSpk.totalStake();
         // Final stake should be positive after complex interactions
         assertGt(finalTotalStake, 0, "Vault should still have stake remaining");
     }
@@ -255,27 +255,27 @@ contract IntegrationTest is BaseTest {
         // Alice deposits
         uint256 depositAmount = 5000e18;
         vm.startPrank(alice);
-        spk.approve(address(sSpk), depositAmount);
-        sSpk.deposit(alice, depositAmount);
+        spk.approve(address(stSpk), depositAmount);
+        stSpk.deposit(alice, depositAmount);
 
         // Alice initiates withdrawal BEFORE slashing
         uint256 withdrawAmount = 3000e18;
-        uint256 currentEpoch = sSpk.currentEpoch();
-        uint256 currentEpochStart = sSpk.currentEpochStart();
+        uint256 currentEpoch = stSpk.currentEpoch();
+        uint256 currentEpochStart = stSpk.currentEpochStart();
 
-        ( uint256 aliceBurnedShares, uint256 aliceWithdrawalShares ) = sSpk.withdraw(alice, withdrawAmount);
+        ( uint256 aliceBurnedShares, uint256 aliceWithdrawalShares ) = stSpk.withdraw(alice, withdrawAmount);
         vm.stopPrank();
 
         // Record withdrawal state
         uint256 withdrawalEpoch = currentEpoch + 1;
-        uint256 recordedWithdrawalShares = sSpk.withdrawalsOf(withdrawalEpoch, alice);
+        uint256 recordedWithdrawalShares = stSpk.withdrawalsOf(withdrawalEpoch, alice);
         assertEq(recordedWithdrawalShares, aliceWithdrawalShares, "Withdrawal shares should be recorded");
         assertEq(aliceWithdrawalShares,    withdrawAmount,        "Withdrawal shares should equal withdraw amount");
 
         // Now slashing occurs AFTER withdrawal is initiated
         uint256 slashAmount = 1000e18; // Slash 1k SPK
         vm.prank(VETO_SLASHER);
-        sSpk.onSlash(slashAmount, uint48(block.timestamp));
+        stSpk.onSlash(slashAmount, uint48(block.timestamp));
 
         // Fast forward to claim time
         uint256 claimTime = currentEpochStart + (2 * EPOCH_DURATION);
@@ -284,7 +284,7 @@ contract IntegrationTest is BaseTest {
         // Alice claims her withdrawal
         uint256 aliceBalanceBefore = spk.balanceOf(alice);
         vm.prank(alice);
-        uint256 claimedAmount = sSpk.claim(alice, withdrawalEpoch);
+        uint256 claimedAmount = stSpk.claim(alice, withdrawalEpoch);
 
         // Verify Alice receives some amount (slashing may affect even prior withdrawals)
         assertGt(claimedAmount,        0,                                  "Alice should receive some amount despite slashing");
