@@ -157,12 +157,15 @@ contract EventsTest is BaseTest {
         return bytes32(uint256(uint160(addr)));
     }
 
-    function _assertLogs(VmSafe.EthGetLogs memory log, bytes32 topic0, bytes32 topic1, bytes32 topic2, bytes32 topic3) internal pure {
-        assertEq(log.topics[0], topic0, "topic0");
-        assertEq(log.topics[1], topic1, "topic1");
-        assertEq(log.topics[2], topic2, "topic2");
-        assertEq(log.topics[3], topic3, "topic3");
+    function _assertLogs(
+        VmSafe.EthGetLogs memory log,
+        bytes32[]         memory topics
+    ) internal pure {
+        for (uint256 i; i < topics.length; ++i) {
+            assertEq(log.topics[i], topics[i], "topic mismatch");
+        }
     }
+
 }
 
 contract NetworkDelegatorDeploymentEventsTest is EventsTest {
@@ -196,10 +199,19 @@ contract NetworkDelegatorDeploymentEventsTest is EventsTest {
 
         bytes32 multisig = _toBytes32(OWNER_MULTISIG);
 
-        _assertLogs(allLogs[0], ROLE_GRANTED_SIG, NETWORK_LIMIT_SET_ROLE,           multisig,   DELEGATOR_FACTORY);
-        _assertLogs(allLogs[1], ROLE_GRANTED_SIG, OPERATOR_NETWORK_SHARES_SET_ROLE, multisig,   DELEGATOR_FACTORY);
-        _assertLogs(allLogs[2], ROLE_GRANTED_SIG, DEFAULT_ADMIN_ROLE,               multisig,   DELEGATOR_FACTORY);
-        _assertLogs(allLogs[3], ROLE_GRANTED_SIG, HOOK_SET_ROLE,                    multisig,   DELEGATOR_FACTORY);
+        bytes32[] memory roleGrantedTopics = new bytes32[](4);
+        roleGrantedTopics[0] = ROLE_GRANTED_SIG;
+        roleGrantedTopics[1] = NETWORK_LIMIT_SET_ROLE;
+        roleGrantedTopics[2] = multisig;
+        roleGrantedTopics[3] = DELEGATOR_FACTORY;
+
+        _assertLogs(allLogs[0], roleGrantedTopics);
+
+        roleGrantedTopics[1] = OPERATOR_NETWORK_SHARES_SET_ROLE;
+        _assertLogs(allLogs[1], roleGrantedTopics);
+
+        roleGrantedTopics[1] = DEFAULT_ADMIN_ROLE;
+        _assertLogs(allLogs[2], roleGrantedTopics);
 
         assertEq(allLogs[4].topics[0],     INITIALIZED_SIG);
         assertEq(allLogs[4].topics.length, 1);
@@ -226,8 +238,17 @@ contract BurnerRouterDeploymentEventsTest is EventsTest {
 
         assertEq(allLogs.length, 2, "Incorrect number of logs");
 
-        assertEq(allLogs[0].topics[0], OWNERSHIP_TRANSFERRED_SIG);
+        bytes32 multisig = _toBytes32(OWNER_MULTISIG);
+
+        bytes32[] memory ownershipTransferredTopics = new bytes32[](3);
+        ownershipTransferredTopics[0] = OWNERSHIP_TRANSFERRED_SIG;
+        ownershipTransferredTopics[1] = _toBytes32(address(0));
+        ownershipTransferredTopics[2] = multisig;
+
+        _assertLogs(allLogs[0], ownershipTransferredTopics);
+
         assertEq(allLogs[1].topics[0], INITIALIZED_SIG);
+        assertEq(allLogs[1].topics.length, 1);
     }
 
 }
@@ -239,6 +260,8 @@ contract StakedSPKVaultDeploymentEventsTest is EventsTest {
         keccak256("Transfer(address,address,uint256)");
     bytes32 private constant DEPOSIT_SIG =
         keccak256("Deposit(address,address,uint256,uint256)");
+    bytes32 private constant WITHDRAW_SIG =
+        keccak256("Withdraw(address,address,uint256,uint256,uint256)");
     bytes32 private constant SET_DELEGATOR_SIG =
         keccak256("SetDelegator(address)");
     bytes32 private constant SET_SLASHER_SIG =
@@ -263,22 +286,89 @@ contract StakedSPKVaultDeploymentEventsTest is EventsTest {
             new bytes32[](0)
         );
 
+        bytes32 multisig     = _toBytes32(OWNER_MULTISIG);
+        bytes32 vaultFactory = _toBytes32(0xAEb6bdd95c502390db8f52c8909F703E9Af6a346);
+
+        bytes32[] memory upgradedTopics = new bytes32[](2);
+        upgradedTopics[0] = UPGRADED_SIG;
+        upgradedTopics[1] = 0x0000000000000000000000005a0dc8e73d6846f12630b8f7d5197fa8cf669cfe;
+
+        _assertLogs(allLogs[0], upgradedTopics);
+
+        bytes32[] memory ownershipTransferredTopics = new bytes32[](3);
+        ownershipTransferredTopics[0] = OWNERSHIP_TRANSFERRED_SIG;
+        ownershipTransferredTopics[1] = _toBytes32(address(0));
+        ownershipTransferredTopics[2] = multisig;
+
+        _assertLogs(allLogs[1], ownershipTransferredTopics);
+
+        bytes32[] memory roleGrantedTopics1 = new bytes32[](4);
+        roleGrantedTopics1[0] = ROLE_GRANTED_SIG;
+        roleGrantedTopics1[1] = bytes32("");
+        roleGrantedTopics1[2] = multisig;
+        roleGrantedTopics1[3] = vaultFactory;
+
+        _assertLogs(allLogs[2], roleGrantedTopics1);
+
+        bytes32[] memory roleGrantedTopics2 = new bytes32[](4);
+        roleGrantedTopics2[0] = ROLE_GRANTED_SIG;
+        roleGrantedTopics2[1] = 0xbae4ee3de6c709ff9a002e774c5b78cb381560b219213c88ae0f1e207c03c023;
+        roleGrantedTopics2[2] = multisig;
+        roleGrantedTopics2[3] = vaultFactory;
+
+        _assertLogs(allLogs[3], roleGrantedTopics2);
+
+        bytes32[] memory roleGrantedTopics3 = new bytes32[](4);
+        roleGrantedTopics3[0] = ROLE_GRANTED_SIG;
+        roleGrantedTopics3[1] = 0x9c56d972d63cbb4195b3c1484691dfc220fa96a4c47e7b6613bd82a022029e06;
+        roleGrantedTopics3[2] = multisig;
+        roleGrantedTopics3[3] = vaultFactory;
+
+        _assertLogs(allLogs[4], roleGrantedTopics3);
+
+        bytes32[] memory roleGrantedTopics4 = new bytes32[](4);
+        roleGrantedTopics4[0] = ROLE_GRANTED_SIG;
+        roleGrantedTopics4[1] = 0xc6aaadd7371d5e8f9ed6849dd66a66573a3ba37167d03f4352c9ba5693678fac;
+        roleGrantedTopics4[2] = multisig;
+        roleGrantedTopics4[3] = vaultFactory;
+
+        _assertLogs(allLogs[5], roleGrantedTopics4);
+
+        bytes32[] memory roleGrantedTopics5 = new bytes32[](4);
+        roleGrantedTopics5[0] = ROLE_GRANTED_SIG;
+        roleGrantedTopics5[1] = 0x4a634bc14d77baf979756509ef4298c6f6318af357828612545267ee2eb79233;
+        roleGrantedTopics5[2] = multisig;
+        roleGrantedTopics5[3] = vaultFactory;
+
+        _assertLogs(allLogs[6], roleGrantedTopics5);
+
+        assertEq(allLogs[7].topics[0], INITIALIZED_SIG);
+        assertEq(allLogs[7].topics.length, 1);
+
+        assertEq(allLogs[8].topics[0], ADMIN_CHANGED_SIG);
+        assertEq(allLogs[8].topics.length, 1);
+
+        bytes32[] memory setDelegatorTopics = new bytes32[](2);
+        setDelegatorTopics[0] = SET_DELEGATOR_SIG;
+        setDelegatorTopics[1] = _toBytes32(NETWORK_DELEGATOR);
+
+        _assertLogs(allLogs[9], setDelegatorTopics);
+
+        bytes32[] memory setSlasherTopics = new bytes32[](2);
+        setSlasherTopics[0] = SET_SLASHER_SIG;
+        setSlasherTopics[1] = _toBytes32(VETO_SLASHER);
+
+        _assertLogs(allLogs[10], setSlasherTopics);
+
         // scan them for all SPK_VAULT event signatures
-        for (uint i = 0; i < allLogs.length; i++) {
+        for (uint i = 11; i < allLogs.length; i++) {
             bytes32 sig = allLogs[i].topics[0];
-            // TODO: Assert all config events and then make sure the rest are user events (deposit, withdraw, etc)
-            // assertTrue(
-            //     sig == ROLE_GRANTED_SIG ||
-            //     sig == INITIALIZED_SIG ||
-            //     sig == ADMIN_CHANGED_SIG ||
-            //     sig == SET_DELEGATOR_SIG ||
-            //     sig == SET_SLASHER_SIG ||
-            //     sig == TRANSFER_SIG ||
-            //     sig == DEPOSIT_SIG ||
-            //     sig == OWNERSHIP_TRANSFERRED_SIG ||
-            //     sig == UPGRADED_SIG,
-            //     "Unknown SPK_VAULT event found!"
-            // );
+            assertTrue(
+                sig == TRANSFER_SIG ||
+                sig == DEPOSIT_SIG ||
+                sig == WITHDRAW_SIG,
+                "Unknown SPK_VAULT event found!"
+            );
         }
     }
 
@@ -302,6 +392,7 @@ contract VetoSlasherDeploymentEventsTest is EventsTest {
         assertEq(allLogs.length, 1, "Incorrect number of logs");
 
         assertEq(allLogs[0].topics[0], INITIALIZED_SIG);
+        assertEq(allLogs[0].topics.length, 1);
     }
 
 }
