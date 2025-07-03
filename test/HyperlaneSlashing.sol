@@ -16,13 +16,13 @@ contract GovernanceSlashingTest is BaseTest {
         deal(address(spk), bob,   4_000_000e18);
 
         vm.startPrank(alice);
-        spk.approve(address(sSpk), 6_000_000e18);
-        sSpk.deposit(alice, 6_000_000e18);
+        spk.approve(address(stSpk), 6_000_000e18);
+        stSpk.deposit(alice, 6_000_000e18);
         vm.stopPrank();
 
         vm.startPrank(bob);
-        spk.approve(address(sSpk), 4_000_000e18);
-        sSpk.deposit(bob, 4_000_000e18);
+        spk.approve(address(stSpk), 4_000_000e18);
+        stSpk.deposit(bob, 4_000_000e18);
         vm.stopPrank();
 
         uint48 depositTimestamp = uint48(block.timestamp);
@@ -52,13 +52,13 @@ contract GovernanceSlashingTest is BaseTest {
 
         skip(3 days + 1);
 
-        assertEq(sSpk.activeBalanceOf(alice), 6_000_000e18);
-        assertEq(sSpk.activeBalanceOf(bob),   4_000_000e18);
-        assertEq(sSpk.totalStake(),           TOTAL_STAKE + 10_000_000e18);
+        assertEq(stSpk.activeBalanceOf(alice), 6_000_000e18);
+        assertEq(stSpk.activeBalanceOf(bob),   4_000_000e18);
+        assertEq(stSpk.totalStake(),           TOTAL_STAKE + 10_000_000e18);
 
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 2_000_000e18);
 
-        assertEq(spk.balanceOf(address(sSpk)), TOTAL_STAKE + 10_000_000e18);
+        assertEq(spk.balanceOf(address(stSpk)), TOTAL_STAKE + 10_000_000e18);
         assertEq(spk.balanceOf(BURNER_ROUTER), 0);
 
         assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), 0);
@@ -72,21 +72,21 @@ contract GovernanceSlashingTest is BaseTest {
         assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 0);
 
         // Show that active stake is reduced proportionally with withdrawals
-        assertEq(sSpk.activeStake(), ACTIVE_STAKE + 10_000_000e18 - 2_000_000e18 * sSpk.activeStake() / sSpk.totalStake());
+        assertEq(stSpk.activeStake(), ACTIVE_STAKE + 10_000_000e18 - 2_000_000e18 * stSpk.activeStake() / stSpk.totalStake());
 
         // Show that active balance is reduced proportionally with withdrawals
-        assertEq(sSpk.activeBalanceOf(alice), 6_000_000e18 * sSpk.activeStake() / sSpk.activeShares());
-        assertEq(sSpk.activeBalanceOf(bob),   4_000_000e18 * sSpk.activeStake() / sSpk.activeShares());
+        assertEq(stSpk.activeBalanceOf(alice), 6_000_000e18 * stSpk.activeStake() / stSpk.activeShares());
+        assertEq(stSpk.activeBalanceOf(bob),   4_000_000e18 * stSpk.activeStake() / stSpk.activeShares());
 
-        assertEq(sSpk.activeBalanceOf(alice), 5_758_950.300616223287308507e18);
-        assertEq(sSpk.activeBalanceOf(bob),   3_839_300.200410815524872338e18);
+        assertEq(stSpk.activeBalanceOf(alice), 5_758_950.300616223287308507e18);
+        assertEq(stSpk.activeBalanceOf(bob),   3_839_300.200410815524872338e18);
 
-        assertEq(sSpk.totalStake(), TOTAL_STAKE + 10_000_000e18 - 2_000_000e18);
+        assertEq(stSpk.totalStake(), TOTAL_STAKE + 10_000_000e18 - 2_000_000e18);
 
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 0);
 
-        assertEq(spk.balanceOf(address(sSpk)), TOTAL_STAKE + 10_000_000e18 - 2_000_000e18);
-        assertEq(spk.balanceOf(BURNER_ROUTER), 2_000_000e18);
+        assertEq(spk.balanceOf(address(stSpk)), TOTAL_STAKE + 10_000_000e18 - 2_000_000e18);
+        assertEq(spk.balanceOf(BURNER_ROUTER),  2_000_000e18);
 
         assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), captureTimestamp);
         assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR),               2_000_000e18);
@@ -142,13 +142,13 @@ contract GovernanceSlashingTest is BaseTest {
         deal(address(spk), bob,   4_000_000e18);
 
         vm.startPrank(alice);
-        spk.approve(address(sSpk), 6_000_000e18);
-        sSpk.deposit(alice, 6_000_000e18);
+        spk.approve(address(stSpk), 6_000_000e18);
+        stSpk.deposit(alice, 6_000_000e18);
         vm.stopPrank();
 
         vm.startPrank(bob);
-        spk.approve(address(sSpk), 4_000_000e18);
-        sSpk.deposit(bob, 4_000_000e18);
+        spk.approve(address(stSpk), 4_000_000e18);
+        stSpk.deposit(bob, 4_000_000e18);
         vm.stopPrank();
 
         skip(24 hours);  // Warp 24 hours

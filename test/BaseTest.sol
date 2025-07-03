@@ -61,7 +61,7 @@ abstract contract BaseTest is Test {
     // Contract instances
     IBurnerRouter  burnerRouter = IBurnerRouter(BURNER_ROUTER);
     IERC20Metadata spk          = IERC20Metadata(SPK);
-    IStakedSPK     sSpk         = IStakedSPK(STAKED_SPK_VAULT);  // For accessing ERC20 functions
+    IStakedSPK     stSpk        = IStakedSPK(STAKED_SPK_VAULT);  // For accessing ERC20 functions
     IVetoSlasher   slasher      = IVetoSlasher(VETO_SLASHER);
 
     INetworkRestakeDelegator delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
@@ -77,8 +77,8 @@ abstract contract BaseTest is Test {
     function setUp() public virtual {
         vm.createSelectFork(getChain("mainnet").rpcUrl, 22769489);  // June 14, 2025
 
-        ACTIVE_STAKE = sSpk.activeStake();
-        TOTAL_STAKE  = sSpk.totalStake();
+        ACTIVE_STAKE = stSpk.activeStake();
+        TOTAL_STAKE  = stSpk.totalStake();
 
         middlewareService = INetworkMiddlewareService(slasher.NETWORK_MIDDLEWARE_SERVICE());
 
@@ -116,7 +116,7 @@ abstract contract BaseTest is Test {
         // --- Step 3: Opt in to the vault as the operator
 
         vm.startPrank(OPERATOR);
-        IOptInService(delegator.OPERATOR_VAULT_OPT_IN_SERVICE()).optIn(address(sSpk));
+        IOptInService(delegator.OPERATOR_VAULT_OPT_IN_SERVICE()).optIn(address(stSpk));
         vm.stopPrank();
     }
 
@@ -141,8 +141,8 @@ abstract contract BaseTest is Test {
         deal(SPK, initialDepositor, 1e18); // 1 SPK
 
         vm.startPrank(initialDepositor);
-        spk.approve(address(sSpk), 1e18);
-        sSpk.deposit(initialDepositor, 1e18);
+        spk.approve(address(stSpk), 1e18);
+        stSpk.deposit(initialDepositor, 1e18);
         vm.stopPrank();
     }
 
