@@ -277,6 +277,12 @@ contract StakedSPKVaultDeploymentEventsTest is EventsTest {
     bytes32 private constant UPGRADED_SIG =
         keccak256("Upgraded(address)");
 
+    bytes32 private constant DEFAULT_ADMIN_ROLE         = 0x00;
+    bytes32 private constant DEPOSIT_WHITELIST_SET_ROLE = keccak256("DEPOSIT_WHITELIST_SET_ROLE");
+    bytes32 private constant DEPOSITOR_WHITELIST_ROLE   = keccak256("DEPOSITOR_WHITELIST_ROLE");
+    bytes32 private constant IS_DEPOSIT_LIMIT_SET_ROLE  = keccak256("IS_DEPOSIT_LIMIT_SET_ROLE");
+    bytes32 private constant DEPOSIT_LIMIT_SET_ROLE     = keccak256("DEPOSIT_LIMIT_SET_ROLE");
+
     function test_spkVaultEventsInHistory() public {
         // fetch *all* logs from deploymentBlock → latest
         VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
@@ -304,7 +310,7 @@ contract StakedSPKVaultDeploymentEventsTest is EventsTest {
 
         bytes32[] memory roleGrantedTopics1 = new bytes32[](4);
         roleGrantedTopics1[0] = ROLE_GRANTED_SIG;
-        roleGrantedTopics1[1] = bytes32("");
+        roleGrantedTopics1[1] = DEFAULT_ADMIN_ROLE;
         roleGrantedTopics1[2] = multisig;
         roleGrantedTopics1[3] = vaultFactory;
 
@@ -312,7 +318,7 @@ contract StakedSPKVaultDeploymentEventsTest is EventsTest {
 
         bytes32[] memory roleGrantedTopics2 = new bytes32[](4);
         roleGrantedTopics2[0] = ROLE_GRANTED_SIG;
-        roleGrantedTopics2[1] = 0xbae4ee3de6c709ff9a002e774c5b78cb381560b219213c88ae0f1e207c03c023;
+        roleGrantedTopics2[1] = DEPOSIT_WHITELIST_SET_ROLE;
         roleGrantedTopics2[2] = multisig;
         roleGrantedTopics2[3] = vaultFactory;
 
@@ -320,7 +326,7 @@ contract StakedSPKVaultDeploymentEventsTest is EventsTest {
 
         bytes32[] memory roleGrantedTopics3 = new bytes32[](4);
         roleGrantedTopics3[0] = ROLE_GRANTED_SIG;
-        roleGrantedTopics3[1] = 0x9c56d972d63cbb4195b3c1484691dfc220fa96a4c47e7b6613bd82a022029e06;
+        roleGrantedTopics3[1] = DEPOSITOR_WHITELIST_ROLE;
         roleGrantedTopics3[2] = multisig;
         roleGrantedTopics3[3] = vaultFactory;
 
@@ -328,7 +334,7 @@ contract StakedSPKVaultDeploymentEventsTest is EventsTest {
 
         bytes32[] memory roleGrantedTopics4 = new bytes32[](4);
         roleGrantedTopics4[0] = ROLE_GRANTED_SIG;
-        roleGrantedTopics4[1] = 0xc6aaadd7371d5e8f9ed6849dd66a66573a3ba37167d03f4352c9ba5693678fac;
+        roleGrantedTopics4[1] = IS_DEPOSIT_LIMIT_SET_ROLE;
         roleGrantedTopics4[2] = multisig;
         roleGrantedTopics4[3] = vaultFactory;
 
@@ -336,7 +342,7 @@ contract StakedSPKVaultDeploymentEventsTest is EventsTest {
 
         bytes32[] memory roleGrantedTopics5 = new bytes32[](4);
         roleGrantedTopics5[0] = ROLE_GRANTED_SIG;
-        roleGrantedTopics5[1] = 0x4a634bc14d77baf979756509ef4298c6f6318af357828612545267ee2eb79233;
+        roleGrantedTopics5[1] = DEPOSIT_LIMIT_SET_ROLE;
         roleGrantedTopics5[2] = multisig;
         roleGrantedTopics5[3] = vaultFactory;
 
