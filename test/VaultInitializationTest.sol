@@ -157,10 +157,7 @@ contract EventsTest is BaseTest {
         return bytes32(uint256(uint160(addr)));
     }
 
-    function _assertLogs(
-        VmSafe.EthGetLogs memory log,
-        bytes32[]         memory topics
-    ) internal pure {
+    function _assertLogs(VmSafe.EthGetLogs memory log, bytes32[] memory topics) internal pure {
         for (uint256 i; i < topics.length; ++i) {
             assertEq(log.topics[i], topics[i], "topic mismatch");
         }
@@ -222,13 +219,11 @@ contract NetworkDelegatorDeploymentEventsTest is EventsTest {
 contract BurnerRouterDeploymentEventsTest is EventsTest {
 
     // BURNER_ROUTER event signatures
-    bytes32 private constant INITIALIZED_SIG =
-        keccak256("Initialized(uint64)");
-    bytes32 private constant OWNERSHIP_TRANSFERRED_SIG =
-        keccak256("OwnershipTransferred(address,address)");
+    bytes32 private constant INITIALIZED_SIG           = keccak256("Initialized(uint64)");
+    bytes32 private constant OWNERSHIP_TRANSFERRED_SIG = keccak256("OwnershipTransferred(address,address)");
 
     function test_burnerRouterEventsInHistory() public {
-        // fetch *all* logs from deploymentBlock → latest
+        // Fetch *all* logs from deploymentBlock → latest
         VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
             START_BLOCK,
             block.number,
@@ -247,7 +242,7 @@ contract BurnerRouterDeploymentEventsTest is EventsTest {
 
         _assertLogs(allLogs[0], ownershipTransferredTopics);
 
-        assertEq(allLogs[1].topics[0], INITIALIZED_SIG);
+        assertEq(allLogs[1].topics[0],     INITIALIZED_SIG);
         assertEq(allLogs[1].topics.length, 1);
     }
 
@@ -256,32 +251,22 @@ contract BurnerRouterDeploymentEventsTest is EventsTest {
 contract StakedSPKVaultDeploymentEventsTest is EventsTest {
 
     // SPK_VAULT event signatures
-    bytes32 private constant TRANSFER_SIG =
-        keccak256("Transfer(address,address,uint256)");
-    bytes32 private constant DEPOSIT_SIG =
-        keccak256("Deposit(address,address,uint256,uint256)");
-    bytes32 private constant WITHDRAW_SIG =
-        keccak256("Withdraw(address,address,uint256,uint256,uint256)");
-    bytes32 private constant SET_DELEGATOR_SIG =
-        keccak256("SetDelegator(address)");
-    bytes32 private constant SET_SLASHER_SIG =
-        keccak256("SetSlasher(address)");
-   bytes32 private constant ROLE_GRANTED_SIG =
-        keccak256("RoleGranted(bytes32,address,address)");
-    bytes32 private constant INITIALIZED_SIG =
-        keccak256("Initialized(uint64)");
-    bytes32 private constant ADMIN_CHANGED_SIG =
-        keccak256("AdminChanged(address,address)");
-    bytes32 private constant OWNERSHIP_TRANSFERRED_SIG =
-        keccak256("OwnershipTransferred(address,address)");
-    bytes32 private constant UPGRADED_SIG =
-        keccak256("Upgraded(address)");
+    bytes32 private constant ADMIN_CHANGED_SIG         = keccak256("AdminChanged(address,address)");
+    bytes32 private constant DEPOSIT_SIG               = keccak256("Deposit(address,address,uint256,uint256)");
+    bytes32 private constant INITIALIZED_SIG           = keccak256("Initialized(uint64)");
+    bytes32 private constant OWNERSHIP_TRANSFERRED_SIG = keccak256("OwnershipTransferred(address,address)");
+    bytes32 private constant ROLE_GRANTED_SIG          = keccak256("RoleGranted(bytes32,address,address)");
+    bytes32 private constant SET_DELEGATOR_SIG         = keccak256("SetDelegator(address)");
+    bytes32 private constant SET_SLASHER_SIG           = keccak256("SetSlasher(address)");
+    bytes32 private constant TRANSFER_SIG              = keccak256("Transfer(address,address,uint256)");
+    bytes32 private constant UPGRADED_SIG              = keccak256("Upgraded(address)");
+    bytes32 private constant WITHDRAW_SIG              = keccak256("Withdraw(address,address,uint256,uint256,uint256)");
 
     bytes32 private constant DEFAULT_ADMIN_ROLE         = 0x00;
+    bytes32 private constant DEPOSIT_LIMIT_SET_ROLE     = keccak256("DEPOSIT_LIMIT_SET_ROLE");
     bytes32 private constant DEPOSIT_WHITELIST_SET_ROLE = keccak256("DEPOSIT_WHITELIST_SET_ROLE");
     bytes32 private constant DEPOSITOR_WHITELIST_ROLE   = keccak256("DEPOSITOR_WHITELIST_ROLE");
     bytes32 private constant IS_DEPOSIT_LIMIT_SET_ROLE  = keccak256("IS_DEPOSIT_LIMIT_SET_ROLE");
-    bytes32 private constant DEPOSIT_LIMIT_SET_ROLE     = keccak256("DEPOSIT_LIMIT_SET_ROLE");
 
     function test_spkVaultEventsInHistory() public {
         // fetch *all* logs from deploymentBlock → latest
@@ -348,10 +333,10 @@ contract StakedSPKVaultDeploymentEventsTest is EventsTest {
 
         _assertLogs(allLogs[6], roleGrantedTopics5);
 
-        assertEq(allLogs[7].topics[0], INITIALIZED_SIG);
+        assertEq(allLogs[7].topics[0],     INITIALIZED_SIG);
         assertEq(allLogs[7].topics.length, 1);
 
-        assertEq(allLogs[8].topics[0], ADMIN_CHANGED_SIG);
+        assertEq(allLogs[8].topics[0],     ADMIN_CHANGED_SIG);
         assertEq(allLogs[8].topics.length, 1);
 
         bytes32[] memory setDelegatorTopics = new bytes32[](2);
@@ -397,7 +382,7 @@ contract VetoSlasherDeploymentEventsTest is EventsTest {
 
         assertEq(allLogs.length, 1, "Incorrect number of logs");
 
-        assertEq(allLogs[0].topics[0], INITIALIZED_SIG);
+        assertEq(allLogs[0].topics[0],     INITIALIZED_SIG);
         assertEq(allLogs[0].topics.length, 1);
     }
 
