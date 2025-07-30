@@ -2,7 +2,6 @@
 pragma solidity 0.8.25;
 
 import "./BaseTest.sol";
-import "forge-std/console.sol";
 
 interface INetworkDelegator is IAccessControl {}
 

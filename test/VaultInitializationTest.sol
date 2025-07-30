@@ -210,8 +210,12 @@ contract NetworkDelegatorDeploymentEventsTest is EventsTest {
         roleGrantedTopics[1] = DEFAULT_ADMIN_ROLE;
         _assertLogs(allLogs[2], roleGrantedTopics);
 
+        roleGrantedTopics[1] = HOOK_SET_ROLE;
+        _assertLogs(allLogs[3], roleGrantedTopics);
+
         assertEq(allLogs[4].topics[0],     INITIALIZED_SIG);
         assertEq(allLogs[4].topics.length, 1);
+        assertEq(allLogs[4].data,          abi.encode(uint256(1)));
     }
 
 }
@@ -335,9 +339,11 @@ contract StakedSPKVaultDeploymentEventsTest is EventsTest {
 
         assertEq(allLogs[7].topics[0],     INITIALIZED_SIG);
         assertEq(allLogs[7].topics.length, 1);
+        assertEq(allLogs[7].data,          abi.encode(uint256(2)));
 
         assertEq(allLogs[8].topics[0],     ADMIN_CHANGED_SIG);
         assertEq(allLogs[8].topics.length, 1);
+        assertEq(allLogs[8].data,          abi.encode(bytes32(0), vaultFactory));
 
         bytes32[] memory setDelegatorTopics = new bytes32[](2);
         setDelegatorTopics[0] = SET_DELEGATOR_SIG;
