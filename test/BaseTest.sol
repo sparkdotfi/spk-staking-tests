@@ -14,10 +14,12 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import { INetworkMiddlewareService }  from "../lib/core/src/interfaces/service/INetworkMiddlewareService.sol";
-import { INetworkRestakeDelegator }   from "../lib/core/src/interfaces/delegator/INetworkRestakeDelegator.sol";
-import { IOptInService }              from "../lib/core/src/interfaces/service/IOptInService.sol";
-import { IVetoSlasher }               from "../lib/core/src/interfaces/slasher/IVetoSlasher.sol";
+import { INetworkMiddlewareService } from "../lib/core/src/interfaces/service/INetworkMiddlewareService.sol";
+import { INetworkRegistry }          from "../lib/core/src/interfaces/INetworkRegistry.sol";
+import { IOperatorRegistry }         from "../lib/core/src/interfaces/IOperatorRegistry.sol";
+import { INetworkRestakeDelegator }  from "../lib/core/src/interfaces/delegator/INetworkRestakeDelegator.sol";
+import { IOptInService }             from "../lib/core/src/interfaces/service/IOptInService.sol";
+import { IVetoSlasher }              from "../lib/core/src/interfaces/slasher/IVetoSlasher.sol";
 
 interface IStakedSPK is IERC20Metadata, IVaultTokenized, IAccessControl {}
 
@@ -30,14 +32,19 @@ abstract contract BaseTest is Test {
     // Deployed addresses
     address constant BURNER_ROUTER     = 0x8BaB0b7975A3128D3D712A33Dc59eb5346e74BCd;
     address constant NETWORK_DELEGATOR = 0x2C5bF9E8e16716A410644d6b4979d74c1951952d;
+    address constant NETWORK_REGISTRY  = 0xC773b1011461e7314CF05f97d95aa8e92C1Fd8aA;
+    address constant OPERATOR_REGISTRY = 0xAd817a6Bc954F678451A71363f04150FDD81Af9F;
     address constant STAKED_SPK_VAULT  = 0xc6132FAF04627c8d05d6E759FAbB331Ef2D8F8fD;
     address constant VETO_SLASHER      = 0x4BaaEB2Bf1DC32a2Fb2DaA4E7140efb2B5f8cAb7;
     address constant RESET_HOOK        = 0xC3B87BbE976f5Bfe4Dc4992ae4e22263Df15ccBE;
 
     // Actors
-    address constant HYPERLANE_NETWORK = 0x59cf937Ea9FA9D7398223E3aA33d92F7f5f986A2;
-    address constant OPERATOR          = 0x087c25f83ED20bda587CFA035ED0c96338D4660f;  // TODO: Change
-    address constant OWNER_MULTISIG    = 0x7a27a9f2A823190140cfb4027f4fBbfA438bac79;
+    address constant SPARK_CONTROLLED_MULTISIG = 0x7a27a9f2A823190140cfb4027f4fBbfA438bac79;
+
+    address constant NETWORK        = SPARK_CONTROLLED_MULTISIG;
+    address constant OPERATOR       = SPARK_CONTROLLED_MULTISIG;
+    address constant OWNER_MULTISIG = SPARK_CONTROLLED_MULTISIG;
+
     address constant SPARK_GOVERNANCE  = 0x3300f198988e4C9C63F75dF86De36421f06af8c4;
 
     // Token
@@ -59,10 +66,12 @@ abstract contract BaseTest is Test {
     address charlie  = makeAddr("charlie");
 
     // Contract instances
-    IBurnerRouter  burnerRouter = IBurnerRouter(BURNER_ROUTER);
-    IERC20Metadata spk          = IERC20Metadata(SPK);
-    IStakedSPK     stSpk        = IStakedSPK(STAKED_SPK_VAULT);  // For accessing ERC20 functions
-    IVetoSlasher   slasher      = IVetoSlasher(VETO_SLASHER);
+    IBurnerRouter     burnerRouter     = IBurnerRouter(BURNER_ROUTER);
+    IERC20Metadata    spk              = IERC20Metadata(SPK);
+    IStakedSPK        stSpk            = IStakedSPK(STAKED_SPK_VAULT);  // For accessing ERC20 functions
+    IVetoSlasher      slasher          = IVetoSlasher(VETO_SLASHER);
+    INetworkRegistry  networkRegistry  = INetworkRegistry(NETWORK_REGISTRY);
+    IOperatorRegistry operatorRegistry = IOperatorRegistry(OPERATOR_REGISTRY);
 
     INetworkRestakeDelegator delegator = INetworkRestakeDelegator(NETWORK_DELEGATOR);
 
@@ -82,7 +91,7 @@ abstract contract BaseTest is Test {
 
         middlewareService = INetworkMiddlewareService(slasher.NETWORK_MIDDLEWARE_SERVICE());
 
-        subnetwork = bytes32(uint256(uint160(HYPERLANE_NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
+        subnetwork = bytes32(uint256(uint160(NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
 
         _setupTestUsers();
 
@@ -92,8 +101,9 @@ abstract contract BaseTest is Test {
 
         // --- Step 1: Do configurations as network, setting middleware, max network limit, and resolver
 
-        vm.startPrank(HYPERLANE_NETWORK);
-        middlewareService.setMiddleware(HYPERLANE_NETWORK);
+        vm.startPrank(NETWORK);
+        networkRegistry.registerNetwork();
+        middlewareService.setMiddleware(NETWORK);
         delegator.setMaxNetworkLimit(0, 2_000_000e18);
         slasher.setResolver(0, OWNER_MULTISIG, "");
         vm.stopPrank();
@@ -116,6 +126,8 @@ abstract contract BaseTest is Test {
         // --- Step 3: Opt in to the vault as the operator
 
         vm.startPrank(OPERATOR);
+        operatorRegistry.registerOperator();
+        IOptInService(delegator.OPERATOR_NETWORK_OPT_IN_SERVICE()).optIn(NETWORK);
         IOptInService(delegator.OPERATOR_VAULT_OPT_IN_SERVICE()).optIn(address(stSpk));
         vm.stopPrank();
     }

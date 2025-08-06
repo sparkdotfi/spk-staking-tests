@@ -15,7 +15,7 @@ contract SlashingTest is BaseTest {
     }
 
     function _doSlash(uint256 slashAmount, uint48 captureTimestamp) internal returns (uint256 slashedAmount) {
-        vm.startPrank(HYPERLANE_NETWORK);
+        vm.startPrank(NETWORK);
         uint256 slashIndex = slasher.requestSlash(subnetwork, OPERATOR, slashAmount, captureTimestamp, "");
 
         skip(3 days + 1);  // Warp past veto window
@@ -238,13 +238,13 @@ contract SlashingTest is BaseTest {
     }
 
     function test_slashingWithZeroAmount() public {
-        vm.startPrank(HYPERLANE_NETWORK);
+        vm.startPrank(NETWORK);
         vm.expectRevert("InsufficientSlash()");
         slasher.requestSlash(subnetwork, OPERATOR, 0, uint48(block.timestamp - 1), "");
     }
 
     function test_slashingWithCurrentOrFutureTimestamp() public {
-        vm.startPrank(HYPERLANE_NETWORK);
+        vm.startPrank(NETWORK);
         vm.expectRevert("InvalidCaptureTimestamp()");
         slasher.requestSlash(subnetwork, OPERATOR, 0, uint48(block.timestamp), "");
 
