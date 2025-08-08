@@ -37,7 +37,7 @@ contract GovernanceSlashingTest is BaseTest {
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp,     ""), 2_000_000e18);
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp,     ""), 2_000_000e18);
 
-        vm.prank(HYPERLANE_NETWORK);
+        vm.prank(NETWORK);
         uint256 slashIndex = slasher.requestSlash(subnetwork, OPERATOR, 10_000_000e18, captureTimestamp, "");
 
         assertEq(slasher.slashRequestsLength(), 1);
@@ -65,7 +65,7 @@ contract GovernanceSlashingTest is BaseTest {
 
         assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 1e18);
 
-        vm.prank(HYPERLANE_NETWORK);
+        vm.prank(NETWORK);
         slasher.executeSlash(slashIndex, "");
 
         assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 0);
@@ -108,7 +108,7 @@ contract GovernanceSlashingTest is BaseTest {
         // --- Step 5: Show that slasher cannot slash anymore with the same request
 
         // Can't execute the same slash again
-        vm.prank(HYPERLANE_NETWORK);
+        vm.prank(NETWORK);
         vm.expectRevert("InsufficientSlash()");
         slasher.executeSlash(slashIndex, "");
 
@@ -117,7 +117,7 @@ contract GovernanceSlashingTest is BaseTest {
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 0);
 
         // Try to slash from the same capture timestamp that was already slashed
-        vm.prank(HYPERLANE_NETWORK);
+        vm.prank(NETWORK);
         vm.expectRevert("InsufficientSlash()");
         slashIndex = slasher.requestSlash(subnetwork, OPERATOR, 100e18, captureTimestamp, "");  // Use the same capture timestamp
 
@@ -128,7 +128,7 @@ contract GovernanceSlashingTest is BaseTest {
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, uint48(block.timestamp - 1), ""), 0);
 
         // Try to slash from a new capture timestamp that is long after the last slash was completed
-        vm.prank(HYPERLANE_NETWORK);
+        vm.prank(NETWORK);
         vm.expectRevert("InsufficientSlash()");
         slasher.requestSlash(subnetwork, OPERATOR, 100e18, uint48(block.timestamp - 1), "");  // Use the same capture timestamp
     }
@@ -156,7 +156,7 @@ contract GovernanceSlashingTest is BaseTest {
 
         uint48 captureTimestamp = uint48(block.timestamp - 1 hours);
 
-        vm.prank(HYPERLANE_NETWORK);
+        vm.prank(NETWORK);
         uint256 slashIndex = slasher.requestSlash(subnetwork, OPERATOR, 10_000_000e18, captureTimestamp, "");
 
         assertEq(slasher.slashRequestsLength(), 1);
@@ -182,7 +182,7 @@ contract GovernanceSlashingTest is BaseTest {
 
         skip(1 seconds);  // Fast-forward to the next block to pass the check to show relevant error
 
-        vm.prank(HYPERLANE_NETWORK);
+        vm.prank(NETWORK);
         vm.expectRevert("SlashRequestCompleted()");
         slasher.executeSlash(slashIndex, "");
     }
