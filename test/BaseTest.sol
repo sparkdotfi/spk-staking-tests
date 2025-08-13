@@ -98,11 +98,10 @@ abstract contract BaseTest is Test {
         /*** Do Hyperlane configuration  ***/
         /***********************************/
 
-        // --- Step 1: Do configurations as network, setting middleware, max network limit, and resolver
+        // --- Step 1: Do configurations as network, DO NOT SET middleware, max network limit, and resolver
 
         vm.startPrank(NETWORK);
         networkRegistry.registerNetwork();
-        // middlewareService.setMiddleware(NETWORK);
         delegator.setMaxNetworkLimit(0, 2_000_000e18);
         slasher.setResolver(0, OWNER_MULTISIG, "");
         vm.stopPrank();

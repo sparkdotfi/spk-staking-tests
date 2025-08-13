@@ -4,7 +4,7 @@ pragma solidity 0.8.25;
 import "./BaseTest.sol";
 import "../lib/core/src/interfaces/slasher/IVetoSlasher.sol";
 
-// NOTE: All of these tests are skipped because the configuration does not allow for slashing
+// NOTE: All of these tests are skipped because the configuration does not allow for slashing since the middleware is not set
 
 contract SlashingTest is BaseTest {
 
