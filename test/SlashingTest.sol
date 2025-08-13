@@ -4,11 +4,19 @@ pragma solidity 0.8.25;
 import "./BaseTest.sol";
 import "../lib/core/src/interfaces/slasher/IVetoSlasher.sol";
 
+// NOTE: All of these tests are skipped because the configuration does not allow for slashing
+
 contract SlashingTest is BaseTest {
 
     error InsufficientSlash();
 
-    function test_wnauthorizedCannotCallOnSlash() public {
+    function test_cannotSlash() public {
+        vm.startPrank(NETWORK);
+        vm.expectRevert("NotNetworkMiddleware()");
+        slasher.requestSlash(subnetwork, OPERATOR, 1, uint48(block.timestamp - 1), "");
+    }
+
+    function skip_test_unauthorizedCannotCallOnSlash() public {
         vm.expectRevert("NotSlasher()");
         vm.prank(attacker);
         stSpk.onSlash(1000e18, uint48(block.timestamp));
@@ -25,7 +33,7 @@ contract SlashingTest is BaseTest {
         vm.stopPrank();
     }
 
-    function test_onlySlasherCanSlash() public {
+    function skip_test_onlySlasherCanSlash() public {
         // Initialize the system and add some deposits for slashing
         _initializeEpochSystem();
 
@@ -76,7 +84,7 @@ contract SlashingTest is BaseTest {
         assertEq(totalStakeAfter, totalStakeBefore - slashedAmount, "Total stake should decrease by slashed amount");
     }
 
-    function test_realSlashingScenario() public {
+    function skip_test_realSlashingScenario() public {
         // Initialize epoch system and set up stSpk with deposits
         _initializeEpochSystem();
 
@@ -118,7 +126,7 @@ contract SlashingTest is BaseTest {
         assertEq(slashedAmount, slashAmount, "Slashed amount should exactly equal requested amount");
     }
 
-    function test_slashingAccessControl() public {
+    function skip_test_slashingAccessControl() public {
         // Initialize system first to allow actual slashing verification
         _initializeEpochSystem();
 
@@ -171,7 +179,7 @@ contract SlashingTest is BaseTest {
         assertEq(slashedAmount, slashAmount,                             "Slashed amount should exactly equal requested amount");
     }
 
-    function test_slashingImpactOnUserWithdrawals() public {
+    function skip_test_slashingImpactOnUserWithdrawals() public {
         // Initialize and set up deposits
         _initializeEpochSystem();
 
@@ -237,13 +245,13 @@ contract SlashingTest is BaseTest {
         assertLe(reductionPercentage, slashingPercentage + 0.00001e18, "Reduction should not exceed slashing percentage by much");
     }
 
-    function test_slashingWithZeroAmount() public {
+    function skip_test_slashingWithZeroAmount() public {
         vm.startPrank(NETWORK);
         vm.expectRevert("InsufficientSlash()");
         slasher.requestSlash(subnetwork, OPERATOR, 0, uint48(block.timestamp - 1), "");
     }
 
-    function test_slashingWithCurrentOrFutureTimestamp() public {
+    function skip_test_slashingWithCurrentOrFutureTimestamp() public {
         vm.startPrank(NETWORK);
         vm.expectRevert("InvalidCaptureTimestamp()");
         slasher.requestSlash(subnetwork, OPERATOR, 0, uint48(block.timestamp), "");
@@ -253,7 +261,7 @@ contract SlashingTest is BaseTest {
     }
 
     // TODO: Refactor this
-    function test_completeSlashingFundFlow() public {
+    function skip_test_completeSlashingFundFlow() public {
         // Test the complete slashing fund flow: stSpk -> burner router -> Spark Governance
         _initializeEpochSystem();
 
@@ -311,7 +319,7 @@ contract SlashingTest is BaseTest {
         assertGt(sSpkDecrease, 0, "Funds should have left stSpk immediately");
     }
 
-    function test_slashingWithVetoWindow() public {
+    function skip_test_slashingWithVetoWindow() public {
         // Test that demonstrates the 3-day veto window concept
         _initializeEpochSystem();
 
@@ -357,7 +365,7 @@ contract SlashingTest is BaseTest {
         assertEq(spk.balanceOf(address(stSpk)), sSpkBalanceAfter, "Slashing remains in effect after veto window");
     }
 
-    function test_networkOnboarding() public {
+    function skip_test_networkOnboarding() public {
         // Test real network onboarding flow according to Symbiotic documentation
         // Reference: https://docs.symbiotic.fi/handbooks/networks-handbook
 
@@ -409,7 +417,7 @@ contract SlashingTest is BaseTest {
         assertEq(stSpk.delegator(), NETWORK_DELEGATOR, "Should use correct delegator");
     }
 
-    function test_operatorOnboardingFlow() public {
+    function skip_test_operatorOnboardingFlow() public {
         // Test comprehensive operator onboarding flow according to Symbiotic documentation
         // Reference: https://docs.symbiotic.fi/handbooks/operators-handbook
 
@@ -483,7 +491,7 @@ contract SlashingTest is BaseTest {
         assertTrue(currentEpoch >= 0, "Vault should track epochs for operator stake timing");
     }
 
-    function test_slashingProportionalImpact() public {
+    function skip_test_slashingProportionalImpact() public {
         // Simplified test for proportional slashing impact to avoid stack too deep
         _initializeEpochSystem();
 
@@ -536,7 +544,7 @@ contract SlashingTest is BaseTest {
         assertTrue(shareValueReductionPercentage <= 2000, "Share value reduction should be reasonable (<=20%)");
     }
 
-    function test_preciseWithdrawalCalculationsAfterSlashing() public {
+    function skip_test_preciseWithdrawalCalculationsAfterSlashing() public {
         // Test withdrawal calculations with multiple users and slashing scenarios
         _initializeEpochSystem();
 
@@ -633,7 +641,7 @@ contract SlashingTest is BaseTest {
         assertTrue(totalReductionPercentage <= slashingPercentage + 200, "Total reduction should not exceed slashing percentage by much");
     }
 
-    function test_requestSlash_revertsInsufficientSlash() public {
+    function skip_test_requestSlash_revertsInsufficientSlash() public {
         bytes32 network = bytes32(uint256(uint160(0x8c1a46D032B7b30D9AB4F30e51D8139CC3E85Ce3)) << 96);
         address NETWORK_MIDDLEWARE = 0x1bbd37E4325d931Aef5fEDEF1f87e8343835acE4;
 

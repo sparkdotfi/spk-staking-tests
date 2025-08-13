@@ -40,12 +40,11 @@ abstract contract BaseTest is Test {
 
     // Actors
     address constant SPARK_CONTROLLED_MULTISIG = 0x7a27a9f2A823190140cfb4027f4fBbfA438bac79;
+    address constant SPARK_GOVERNANCE          = 0x3300f198988e4C9C63F75dF86De36421f06af8c4;
 
-    address constant NETWORK        = SPARK_CONTROLLED_MULTISIG;
-    address constant OPERATOR       = SPARK_CONTROLLED_MULTISIG;
+    address constant NETWORK        = SPARK_GOVERNANCE;
+    address constant OPERATOR       = SPARK_GOVERNANCE;
     address constant OWNER_MULTISIG = SPARK_CONTROLLED_MULTISIG;
-
-    address constant SPARK_GOVERNANCE  = 0x3300f198988e4C9C63F75dF86De36421f06af8c4;
 
     // Token
     address constant SPK = 0xc20059e0317DE91738d13af027DfC4a50781b066;
@@ -103,7 +102,7 @@ abstract contract BaseTest is Test {
 
         vm.startPrank(NETWORK);
         networkRegistry.registerNetwork();
-        middlewareService.setMiddleware(NETWORK);
+        // middlewareService.setMiddleware(NETWORK);
         delegator.setMaxNetworkLimit(0, 2_000_000e18);
         slasher.setResolver(0, OWNER_MULTISIG, "");
         vm.stopPrank();
@@ -130,6 +129,10 @@ abstract contract BaseTest is Test {
         IOptInService(delegator.OPERATOR_NETWORK_OPT_IN_SERVICE()).optIn(NETWORK);
         IOptInService(delegator.OPERATOR_VAULT_OPT_IN_SERVICE()).optIn(address(stSpk));
         vm.stopPrank();
+
+        // --- Step 4: Check that points requirements are met
+
+        assertEq(delegator.stake(subnetwork, OPERATOR), 2_000_000e18);
     }
 
     function _setupTestUsers() internal {
