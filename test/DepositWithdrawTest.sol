@@ -19,7 +19,7 @@ contract TestDepositFailureTests is BaseTest {
         stSpk.deposit(alice, aliceBalance);
 
         assertEq(spk.balanceOf(alice),   0,                          "SPK not transferred");
-        assertEq(stSpk.balanceOf(alice), aliceBalance,               "sSPK not minted");
+        assertEq(stSpk.balanceOf(alice), aliceBalance,               "stSpk not minted");
         assertEq(stSpk.totalSupply(),    totalSupply + aliceBalance, "Total supply not updated");  // 1:1 rate
 
         vm.stopPrank();
@@ -90,9 +90,9 @@ contract TestDepositSuccessTests is BaseTest {
         vm.startPrank(alice);
 
         // Check initial balances
-        uint256 initialSPKBalance  = spk.balanceOf(alice);
-        uint256 initialSSPKBalance = stSpk.balanceOf(alice);
-        uint256 initialTotalSupply = stSpk.totalSupply();
+        uint256 initialSPKBalance   = spk.balanceOf(alice);
+        uint256 initialstSpkBalance = stSpk.balanceOf(alice);
+        uint256 initialTotalSupply  = stSpk.totalSupply();
 
         // Approve and deposit
         spk.approve(address(stSpk), depositAmount);
@@ -106,7 +106,7 @@ contract TestDepositSuccessTests is BaseTest {
 
         // Check balances after deposit
         assertEq(spk.balanceOf(alice),   initialSPKBalance  - depositAmount, "SPK not transferred");
-        assertEq(stSpk.balanceOf(alice), initialSSPKBalance + mintedShares,  "sSPK not minted");
+        assertEq(stSpk.balanceOf(alice), initialstSpkBalance + mintedShares, "stSpk not minted");
         assertEq(stSpk.totalSupply(),    initialTotalSupply + mintedShares,  "Total supply not updated");
 
         assertEq(spk.balanceOf(address(stSpk)), TOTAL_STAKE + depositAmount, "SPK not transferred to vault");
@@ -494,7 +494,7 @@ contract TestVaultTokenTest is BaseTest {
         ( , uint256 mintedShares ) = stSpk.deposit(alice, depositAmount);
         vm.stopPrank();
 
-        // Check if Alice can transfer her sSPK tokens to Bob
+        // Check if Alice can transfer her stSpk tokens to Bob
         uint256 transferAmount = mintedShares / 2;
 
         vm.startPrank(alice);
@@ -503,8 +503,8 @@ contract TestVaultTokenTest is BaseTest {
         vm.stopPrank();
 
         // Verify transfer worked
-        assertEq(stSpk.balanceOf(bob),   transferAmount,                "Bob should have received sSPK tokens");
-        assertEq(stSpk.balanceOf(alice), mintedShares - transferAmount, "Alice should have remaining sSPK tokens");
+        assertEq(stSpk.balanceOf(bob),   transferAmount,                "Bob should have received stSpk tokens");
+        assertEq(stSpk.balanceOf(alice), mintedShares - transferAmount, "Alice should have remaining stSpk tokens");
     }
 
     function test_vaultToken_approvalAndTransferFrom() public {
@@ -514,7 +514,7 @@ contract TestVaultTokenTest is BaseTest {
         spk.approve(address(stSpk), depositAmount);
         ( , uint256 mintedShares ) = stSpk.deposit(alice, depositAmount);
 
-        // Alice approves Bob to spend her sSPK tokens
+        // Alice approves Bob to spend her stSpk tokens
         uint256 approvalAmount = mintedShares / 2;
         stSpk.approve(bob, approvalAmount);
         vm.stopPrank();
@@ -525,8 +525,8 @@ contract TestVaultTokenTest is BaseTest {
         vm.stopPrank();
 
         // Verify transfer worked
-        assertEq(stSpk.balanceOf(charlie),    approvalAmount,                "Charlie should have received sSPK tokens");
-        assertEq(stSpk.balanceOf(alice),      mintedShares - approvalAmount, "Alice should have remaining sSPK tokens");
+        assertEq(stSpk.balanceOf(charlie),    approvalAmount,                "Charlie should have received stSpk tokens");
+        assertEq(stSpk.balanceOf(alice),      mintedShares - approvalAmount, "Alice should have remaining stSpk tokens");
         assertEq(stSpk.allowance(alice, bob), 0,                             "Allowance should be used up");
     }
 
