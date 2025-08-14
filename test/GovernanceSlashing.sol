@@ -7,7 +7,41 @@ interface INetworkDelegator is IAccessControl {}
 
 contract GovernanceSlashingTest is BaseTest {
 
-    function test_hyperlaneCanSlashUpToNetworkLimit() public {
+    function test_slashingIsDisabled() public {
+        // --- Step 1: Deposit 10m SPK to stSPK as two users
+
+        deal(address(spk), alice, 6_000_000e18);
+        deal(address(spk), bob,   4_000_000e18);
+
+        vm.startPrank(alice);
+        spk.approve(address(stSpk), 6_000_000e18);
+        stSpk.deposit(alice, 6_000_000e18);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        spk.approve(address(stSpk), 4_000_000e18);
+        stSpk.deposit(bob, 4_000_000e18);
+        vm.stopPrank();
+
+        uint48 depositTimestamp = uint48(block.timestamp);
+
+        skip(24 hours);  // Warp 24 hours
+
+        // --- Step 2: Request a slash of all staked SPK (show that network limit is hit)
+
+        uint48 captureTimestamp = uint48(block.timestamp - 1 seconds);  // Can't capture current timestamp and above
+
+        // Demonstrate that the slashable stake is 100k SPK at the deposit and capture timestamps, and 0 before deposit
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp - 1, ""), 0);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp,     ""), 2_000_000e18);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp,     ""), 2_000_000e18);
+
+        vm.prank(NETWORK);
+        vm.expectRevert("NotNetworkMiddleware()");
+        slasher.requestSlash(subnetwork, OPERATOR, 10_000_000e18, captureTimestamp, "");
+    }
+
+    function skip_test_hyperlaneCanSlashUpToNetworkLimit() public {
 
         // --- Step 1: Deposit 10m SPK to stSPK as two users
 
@@ -133,7 +167,7 @@ contract GovernanceSlashingTest is BaseTest {
         slasher.requestSlash(subnetwork, OPERATOR, 100e18, uint48(block.timestamp - 1), "");  // Use the same capture timestamp
     }
 
-    function test_ownerMultisigCanVetoSlash() public {
+    function skip_test_ownerMultisigCanVetoSlash() public {
 
         // --- Step 1: Deposit 10m SPK to stSPK as two users
 
