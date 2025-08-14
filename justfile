@@ -4,4 +4,4 @@
 alias w := wake
 
 wake:
-    wake test wake_model -S ""
+    wake --config wake_model/wake.toml test wake_model -S ""
