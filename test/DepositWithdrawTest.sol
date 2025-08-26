@@ -490,6 +490,8 @@ contract TestRedeemFailureTests is BaseTest {
 contract TestRedeemSuccessTests is BaseTest {
 
     function test_redeem() public {
+        uint256 spkBalanceOfStSpk = spk.balanceOf(address(stSpk));
+
         uint256 depositAmount = 1000e18;
 
         vm.startPrank(alice);
@@ -498,7 +500,7 @@ contract TestRedeemSuccessTests is BaseTest {
 
         // Redeem half the shares
         uint256 currentEpoch        = stSpk.currentEpoch();
-        uint256 initialActiveShares = stSpk.balanceOf(alice);
+        uint256 stSpkBalanceOfAlice = stSpk.balanceOf(alice);
         uint256 redeemShares        = mintedShares / 2;
 
         // Calculate expected assets based on current share price
@@ -515,8 +517,10 @@ contract TestRedeemSuccessTests is BaseTest {
         assertEq(redeemWithdrawalShares, redeemShares,   "No withdrawal shares minted");
 
         // Verify active shares were burned correctly
-        assertEq(stSpk.balanceOf(alice),        initialActiveShares - redeemShares, "Active shares not burned correctly");
-        assertEq(spk.balanceOf(address(stSpk)), TOTAL_STAKE + depositAmount,        "SPK not transferred to vault");
+        assertEq(stSpk.balanceOf(alice),        stSpkBalanceOfAlice - redeemShares, "Active shares not burned correctly");
+        assertEq(stSpk.activeStake(),           ACTIVE_STAKE + depositAmount - withdrawnAssets,      "Active stake not updated");
+        assertEq(stSpk.totalStake(),            TOTAL_STAKE + depositAmount,       "Total stake not updated");
+        assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk + depositAmount, "SPK not transferred to vault");
 
         // Check withdrawal shares were created correctly
         uint256 withdrawalShares = stSpk.withdrawalsOf(currentEpoch + 1, alice);
