@@ -83,7 +83,8 @@ abstract contract BaseTest is Test {
     /**********************************************************************************************/
 
     function setUp() public virtual {
-        vm.createSelectFork(getChain("mainnet").rpcUrl, 22769489);  // June 14, 2025
+        // vm.createSelectFork(getChain("mainnet").rpcUrl, 22769489);  // June 14, 2025
+        vm.createSelectFork(getChain("mainnet").rpcUrl, 23219480);  // August 25, 2025
 
         ACTIVE_STAKE = stSpk.activeStake();
         TOTAL_STAKE  = stSpk.totalStake();
