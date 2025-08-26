@@ -146,6 +146,8 @@ abstract contract BaseTest is Test {
     /*** Helper functions                                                                       ***/
     /**********************************************************************************************/
 
+    // TODO: Remove `_initializeEpochSystem`. It is no longer necessary (since the system is live).
+
     /**
      * @notice Helper function to initialize the epoch system with a deposit
      * @dev The epoch system starts when the first deposit is made

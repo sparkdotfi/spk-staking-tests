@@ -383,11 +383,15 @@ contract TestClaimBatchFailureTests is BaseTest {
 contract TestClaimBatchSuccessTests is BaseTest {
 
     function test_claimBatch() public {
+        uint256 spkBalanceOfStSpk = spk.balanceOf(address(stSpk));
+
         // Step 0: Initialize epoch system with a deposit
         _initializeEpochSystem();
 
         // Provide more realistic scenario where a user withdraws mid-epoch
         skip(1 days);
+
+        ACTIVE_STAKE = stSpk.activeStake();
 
         // Setup multiple withdrawals across different epochs
         uint256 depositAmount  = 3000e18;
@@ -434,9 +438,20 @@ contract TestClaimBatchSuccessTests is BaseTest {
         uint256 totalClaimed = stSpk.claimBatch(alice, withdrawalEpochs);
 
         // Verify batch claim
-        assertEq(totalClaimed,                  1500e18,                                           "Nothing claimed in batch");
-        assertEq(spk.balanceOf(alice),          aliceBalanceBefore + totalClaimed,                 "SPK not received from batch claim");
-        assertEq(spk.balanceOf(address(stSpk)), TOTAL_STAKE + depositAmount - totalClaimed + 1e18, "SPK not transferred to vault");
+        assertEq(totalClaimed,           1500e18,                            "Nothing claimed in batch");
+        assertEq(spk.balanceOf(alice),   aliceBalanceBefore + totalClaimed,  "SPK not received from batch claim");
+        assertEq(stSpk.balanceOf(alice), depositAmount - 3 * withdrawAmount, "Active shares not burned");
+        assertEq(stSpk.activeStake(), (
+            ACTIVE_STAKE + depositAmount - 3 * withdrawAmount
+        ), "Active stake not updated");
+
+        // totalStake() is defined as activeStake() + withdrawals[currentEpoch] + withdrawals[nextEpoch].
+        // Since we are warping by two full epochs, both withdrawal entries should be zeroed out now.
+        // That is why the below will be `ACTIVE_STAKE + ..` not `TOTAL_STAKE + ..`.
+        assertEq(stSpk.totalStake(), ACTIVE_STAKE + depositAmount - 3 * withdrawAmount, "Total stake updated");
+        assertEq(spk.balanceOf(address(stSpk)), (
+            spkBalanceOfStSpk + depositAmount - 3 * withdrawAmount + 1e18
+        ), "SPK not transferred to vault");
     }
 
 }
