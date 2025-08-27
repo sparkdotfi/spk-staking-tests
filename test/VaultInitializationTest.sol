@@ -151,7 +151,10 @@ contract VaultInitializationTest is BaseTest {
 
 contract EventsTest is BaseTest {
 
-    uint256 constant START_BLOCK = 20000000;  // June 1, 2024 - well before all deployments
+    // Deployment of BURNER_ROUTER: 22698025 (2025-06-13)
+    // Deployment of delegator, vault, slasher: 22698266 (2025-06-13)
+    // Let's take a few blocks before the first one
+    uint256 constant START_BLOCK = 22698000;
 
     function _toBytes32(address addr) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(addr)));
@@ -187,7 +190,7 @@ contract NetworkDelegatorDeploymentEventsTest is EventsTest {
         // fetch *all* logs from deploymentBlock → latest
         VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
             START_BLOCK,
-            block.number,
+            START_BLOCK + 10_000,
             NETWORK_DELEGATOR,
             new bytes32[](0)
         );
@@ -230,7 +233,7 @@ contract BurnerRouterDeploymentEventsTest is EventsTest {
         // Fetch *all* logs from deploymentBlock → latest
         VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
             START_BLOCK,
-            block.number,
+            START_BLOCK + 10_000,
             BURNER_ROUTER,
             new bytes32[](0)
         );
@@ -276,10 +279,12 @@ contract StakedSPKVaultDeploymentEventsTest is EventsTest {
         // fetch *all* logs from deploymentBlock → latest
         VmSafe.EthGetLogs[] memory allLogs = vm.eth_getLogs(
             START_BLOCK,
-            block.number,
+            START_BLOCK + 10_000,
             STAKED_SPK_VAULT,
             new bytes32[](0)
         );
+
+        assertEq(allLogs.length, 11, "Incorrect number of logs");
 
         bytes32 multisig     = _toBytes32(OWNER_MULTISIG);
         bytes32 vaultFactory = _toBytes32(0xAEb6bdd95c502390db8f52c8909F703E9Af6a346);
