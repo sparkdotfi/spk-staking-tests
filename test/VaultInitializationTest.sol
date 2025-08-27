@@ -84,26 +84,26 @@ contract VaultInitializationTest is BaseTest {
         _initializeEpochSystem();
 
         // Record initial epoch state with precise values
-        uint256 initialTimestamp = block.timestamp;
-        uint256 currentEpoch = stSpk.currentEpoch();
+        uint48 epochDurationInit  = stSpk.epochDurationInit();
+        uint256 currentEpoch      = stSpk.currentEpoch();
         uint256 currentEpochStart = stSpk.currentEpochStart();
-        uint256 nextEpochStart = stSpk.nextEpochStart();
+        uint256 nextEpochStart    = stSpk.nextEpochStart();
 
         // Verify precise epoch timing relationships
         assertEq(nextEpochStart, currentEpochStart + EPOCH_DURATION, "Next epoch start should be exactly one EPOCH_DURATION after current");
 
-        assertTrue(currentEpochStart <= initialTimestamp, "Current epoch start should not be in the future");
-        assertTrue(nextEpochStart > initialTimestamp,     "Next epoch start should be in the future");
+        assertTrue(currentEpochStart <= block.timestamp, "Current epoch start should not be in the future");
+        assertTrue(nextEpochStart > block.timestamp,     "Next epoch start should be in the future");
 
         // Verify epoch calculation precision
-        uint256 expectedCurrentEpoch = (initialTimestamp - currentEpochStart) / EPOCH_DURATION;
+        uint256 expectedCurrentEpoch = (block.timestamp - epochDurationInit) / EPOCH_DURATION;
         assertEq(currentEpoch, expectedCurrentEpoch, "Current epoch should match calculated epoch");
 
         // Test epoch progression by advancing time to exactly the next epoch start
         vm.warp(nextEpochStart);
-        uint256 newCurrentEpoch = stSpk.currentEpoch();
+        uint256 newCurrentEpoch      = stSpk.currentEpoch();
         uint256 newCurrentEpochStart = stSpk.currentEpochStart();
-        uint256 newNextEpochStart = stSpk.nextEpochStart();
+        uint256 newNextEpochStart    = stSpk.nextEpochStart();
 
         // Verify precise epoch advancement
         assertEq(newCurrentEpoch, currentEpoch + 1,                  "Epoch should advance by exactly 1");
@@ -124,7 +124,7 @@ contract VaultInitializationTest is BaseTest {
         // Test edge case: advance time within the epoch and verify epoch doesn't change
         uint256 partialEpochTime = newNextEpochStart - 1; // 1 second before next epoch
         vm.warp(partialEpochTime);
-        uint256 sameEpoch = stSpk.currentEpoch();
+        uint256 sameEpoch      = stSpk.currentEpoch();
         uint256 sameEpochStart = stSpk.currentEpochStart();
 
         assertEq(sameEpoch,      newCurrentEpoch,      "Epoch should not change when advancing within same epoch");
