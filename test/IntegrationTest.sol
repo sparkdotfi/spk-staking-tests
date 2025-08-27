@@ -156,13 +156,14 @@ contract IntegrationTest is BaseTest {
         // We have (in chronological order): ACTIVE_STAKE + 1e18 + depositAmount - withdrawAmount.
         // Then we perform slash. Slash will pro-rata reduce active stake and withdrawals. The
         // algorithm `onSlash` follows is:
-        // ✻ capture epoch == previous epoch: reduce active stake, withdrawals[currentEpoch], withdrawals[nextEpoch]
-        // ✻ capture epoch == next epoch    : reduce active stake, withdrawals[nextEpoch]
+        // ✻ capture epoch == previous epoch: reduce: active stake, withdrawals[currentEpoch], withdrawals[nextEpoch]
+        // ✻ capture epoch == current epoch : reduce: active stake, withdrawals[nextEpoch]
         // Sinc we are passing in current timestamp, we are in the second case.
-        uint256 slashableAmount = activeStake + withdrawalsEpochNext;
-        uint256 activeSlashedAmount = activeStake * slashAmount / slashableAmount;
+        uint256 slashableAmount         = activeStake + withdrawalsEpochNext;
+        uint256 activeSlashedAmount     = activeStake * slashAmount / slashableAmount;
         uint256 withdrawalSlashedAmount = slashAmount - activeSlashedAmount;
-        assertEq(stSpk.activeStake(), activeStake - activeSlashedAmount, "Active stake should reduce by pro-rata slash amount");
+        assertEq(stSpk.activeStake(),                 activeStake - activeSlashedAmount,
+                 "Active stake should reduce by pro-rata slash amount");
         assertEq(stSpk.withdrawals(currentEpoch + 1), withdrawalsEpochNext - withdrawalSlashedAmount,
                  "Withdrawals for next epoch should reduce by pro-rata slash amount");
 
@@ -171,7 +172,8 @@ contract IntegrationTest is BaseTest {
 
         // Assuming we haven't crossed the boundary of next epoch, activeStake and withdrawals
         // should stay the same
-        assertEq(stSpk.activeStake(), activeStake - activeSlashedAmount, "Active stake should remain the same before new epoch");
+        assertEq(stSpk.activeStake(),                 activeStake - activeSlashedAmount,
+                 "Active stake should remain the same before new epoch");
         assertEq(stSpk.withdrawals(currentEpoch + 1), withdrawalsEpochNext - withdrawalSlashedAmount,
                  "Withdrawals for next epoch should remain the same before new epoch");
 
@@ -179,6 +181,7 @@ contract IntegrationTest is BaseTest {
         uint256 withdrawalEpoch = currentEpoch + 1;
         vm.prank(alice);
         uint256 claimedAmount = stSpk.claim(alice, withdrawalEpoch);
+
         // Alice's claimed amount should have reduced pro-rata (as all other withdrawals for next epoch).
         uint256 expClaimedAmount = withdrawAmount - (withdrawAmount * slashAmount / slashableAmount);
 
