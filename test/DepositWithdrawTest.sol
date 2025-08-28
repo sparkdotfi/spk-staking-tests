@@ -233,13 +233,9 @@ contract TestWithdrawSuccessTests is BaseTest {
         uint256 withdrawalShares = stSpk.withdrawalsOf(currentEpoch + 1, alice);
 
         assertEq(withdrawalShares, mintedWithdrawalShares, "Withdrawal shares mismatch");
-        assertEq(stSpk.activeStake(), (
-            ACTIVE_STAKE + depositAmount - withdrawAmount
-        ), "Active stake not updated");
-        assertEq(stSpk.totalStake(), (
-            TOTAL_STAKE + depositAmount
-        ), "Total stake not updated");
-        assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk + depositAmount, "SPK not transferred to vault");
+        assertEq(stSpk.activeStake(),           ACTIVE_STAKE      + depositAmount - withdrawAmount, "Active stake not updated");
+        assertEq(stSpk.totalStake(),            TOTAL_STAKE       + depositAmount,                  "Total stake not updated");
+        assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk + depositAmount,                  "SPK not transferred to vault");
     }
 
 }
@@ -338,20 +334,16 @@ contract TestClaimSuccessTests is BaseTest {
         vm.prank(alice);
         uint256 claimedAmount = stSpk.claim(alice, currentEpoch + 1);
 
-        assertEq(claimedAmount,          withdrawAmount,                     "Invalid claimed amount");
-        assertEq(spk.balanceOf(alice),   spkBalanceOfAlice + claimedAmount,  "SPK not received");
-        assertEq(stSpk.balanceOf(alice), depositAmount     - withdrawAmount, "Active shares not burned");
-        assertEq(stSpk.activeStake(), (
-            ACTIVE_STAKE + depositAmount - withdrawAmount + 1e18
-        ), "Active stake not updated");
+        assertEq(claimedAmount,          withdrawAmount,                                            "Invalid claimed amount");
+        assertEq(spk.balanceOf(alice),   spkBalanceOfAlice + claimedAmount,                         "SPK not received");
+        assertEq(stSpk.balanceOf(alice), depositAmount     - withdrawAmount,                        "Active shares not burned");
+        assertEq(stSpk.activeStake(),    ACTIVE_STAKE      + depositAmount - withdrawAmount + 1e18, "Active stake not updated");
 
         // totalStake() is defined as activeStake() + withdrawals[currentEpoch] + withdrawals[nextEpoch].
         // Since we are warping by two full epochs, both withdrawal entries should be zeroed out now.
         // That is why the below will be `ACTIVE_STAKE + ..` not `TOTAL_STAKE + ..`.
-        assertEq(stSpk.totalStake(), ACTIVE_STAKE + depositAmount - withdrawAmount + 1e18, "Total stake updated");
-        assertEq(spk.balanceOf(address(stSpk)), (
-            spkBalanceOfStSpk + depositAmount - withdrawAmount + 1e18
-        ), "SPK not transferred to vault");
+        assertEq(stSpk.totalStake(),            ACTIVE_STAKE      + depositAmount - withdrawAmount + 1e18, "Total stake updated");
+        assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk + depositAmount - withdrawAmount + 1e18, "SPK not transferred to vault");
     }
 
 }
@@ -438,20 +430,16 @@ contract TestClaimBatchSuccessTests is BaseTest {
         uint256 totalClaimed = stSpk.claimBatch(alice, withdrawalEpochs);
 
         // Verify batch claim
-        assertEq(totalClaimed,           1500e18,                                 "Nothing claimed in batch");
-        assertEq(spk.balanceOf(alice),   aliceBalanceBefore + totalClaimed,       "SPK not received from batch claim");
-        assertEq(stSpk.balanceOf(alice), depositAmount      - 3 * withdrawAmount, "Active shares not burned");
-        assertEq(stSpk.activeStake(), (
-            ACTIVE_STAKE + depositAmount - 3 * withdrawAmount
-        ), "Active stake not updated");
+        assertEq(totalClaimed,           1500e18,                                                       "Nothing claimed in batch");
+        assertEq(spk.balanceOf(alice),   aliceBalanceBefore + totalClaimed,                             "SPK not received from batch claim");
+        assertEq(stSpk.balanceOf(alice), depositAmount      - 3 * withdrawAmount,                       "Active shares not burned");
+        assertEq(stSpk.activeStake(),    ACTIVE_STAKE       + depositAmount       - 3 * withdrawAmount, "Active stake not updated");
 
         // totalStake() is defined as activeStake() + withdrawals[currentEpoch] + withdrawals[nextEpoch].
         // Since we are warping by two full epochs, both withdrawal entries should be zeroed out now.
         // That is why the below will be `ACTIVE_STAKE + ..` not `TOTAL_STAKE + ..`.
-        assertEq(stSpk.totalStake(), ACTIVE_STAKE + depositAmount - 3 * withdrawAmount, "Total stake updated");
-        assertEq(spk.balanceOf(address(stSpk)), (
-            spkBalanceOfStSpk + depositAmount - 3 * withdrawAmount + 1e18
-        ), "SPK not transferred to vault");
+        assertEq(stSpk.totalStake(),            ACTIVE_STAKE      + depositAmount - 3 * withdrawAmount,        "Total stake updated");
+        assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk + depositAmount - 3 * withdrawAmount + 1e18, "SPK not transferred to vault");
     }
 
 }
