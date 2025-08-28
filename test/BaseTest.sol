@@ -29,11 +29,14 @@ abstract contract BaseTest is Test {
     /*** Constants                                                                              ***/
     /**********************************************************************************************/
 
+    // Symbiotic system addresses
+    address constant VAULT_FACTORY     = 0xAEb6bdd95c502390db8f52c8909F703E9Af6a346;
+    address constant NETWORK_REGISTRY  = 0xC773b1011461e7314CF05f97d95aa8e92C1Fd8aA;
+    address constant OPERATOR_REGISTRY = 0xAd817a6Bc954F678451A71363f04150FDD81Af9F;
+
     // Deployed addresses
     address constant BURNER_ROUTER     = 0x8BaB0b7975A3128D3D712A33Dc59eb5346e74BCd;
     address constant NETWORK_DELEGATOR = 0x2C5bF9E8e16716A410644d6b4979d74c1951952d;
-    address constant NETWORK_REGISTRY  = 0xC773b1011461e7314CF05f97d95aa8e92C1Fd8aA;
-    address constant OPERATOR_REGISTRY = 0xAd817a6Bc954F678451A71363f04150FDD81Af9F;
     address constant STAKED_SPK_VAULT  = 0xc6132FAF04627c8d05d6E759FAbB331Ef2D8F8fD;
     address constant VETO_SLASHER      = 0x4BaaEB2Bf1DC32a2Fb2DaA4E7140efb2B5f8cAb7;
     address constant RESET_HOOK        = 0xC3B87BbE976f5Bfe4Dc4992ae4e22263Df15ccBE;
@@ -57,6 +60,7 @@ abstract contract BaseTest is Test {
     // Roles
     bytes32 constant DEFAULT_ADMIN_ROLE = 0x00;
 
+    bytes32 constant ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 
     // Constants based on forked state
     uint256 ACTIVE_STAKE;
@@ -99,7 +103,7 @@ abstract contract BaseTest is Test {
         _setupTestUsers();
 
         _transferOwnershipFromSparkMultisigToSparkGovernance();
-        _testOwnershipTransferredFromSparkMultisigToSparkGovernance();
+        // _testOwnershipTransferredFromSparkMultisigToSparkGovernance();
 
         /***********************************/
         /*** Do Hyperlane configuration  ***/
@@ -155,18 +159,26 @@ abstract contract BaseTest is Test {
         OwnableUpgradeable(address(burnerRouter)).transferOwnership(SPARK_GOVERNANCE);
 
         // 2. Vault
+        OwnableUpgradeable(address(stSpk)).transferOwnership(SPARK_GOVERNANCE);
+
+        stSpk.renounceRole(stSpk.DEPOSIT_WHITELIST_SET_ROLE(), SPARK_CONTROLLED_MULTISIG);
+        stSpk.renounceRole(stSpk.DEPOSITOR_WHITELIST_ROLE(),   SPARK_CONTROLLED_MULTISIG);
+        stSpk.renounceRole(stSpk.IS_DEPOSIT_LIMIT_SET_ROLE(),  SPARK_CONTROLLED_MULTISIG);
+        stSpk.renounceRole(stSpk.DEPOSIT_LIMIT_SET_ROLE(),     SPARK_CONTROLLED_MULTISIG);
+
+        stSpk.grantRole(stSpk.DEPOSIT_WHITELIST_SET_ROLE(), SPARK_GOVERNANCE);
+        stSpk.grantRole(stSpk.DEPOSITOR_WHITELIST_ROLE(),   SPARK_GOVERNANCE);
+        stSpk.grantRole(stSpk.IS_DEPOSIT_LIMIT_SET_ROLE(),  SPARK_GOVERNANCE);
+        stSpk.grantRole(stSpk.DEPOSIT_LIMIT_SET_ROLE(),     SPARK_GOVERNANCE);
+
         stSpk.grantRole(DEFAULT_ADMIN_ROLE, SPARK_GOVERNANCE);
         stSpk.renounceRole(DEFAULT_ADMIN_ROLE, SPARK_CONTROLLED_MULTISIG);
 
-    }
+        // 3. Delegator
 
-    function _testOwnershipTransferredFromSparkMultisigToSparkGovernance() internal {
-        // 1: BurnerRouter
-        assertEq(OwnableUpgradeable(address(burnerRouter)).owner(), SPARK_GOVERNANCE);
 
-        // 2. Vault
-        assertTrue(stSpk.hasRole(DEFAULT_ADMIN_ROLE, SPARK_GOVERNANCE));
-        assertFalse(stSpk.hasRole(DEFAULT_ADMIN_ROLE, SPARK_CONTROLLED_MULTISIG));
+        // 4. Slasher
+
     }
 
     /**********************************************************************************************/
@@ -201,7 +213,33 @@ abstract contract BaseTest is Test {
 }
 
 contract BaseTests is BaseTest {
-    function test_foo() public {
-        assertTrue(true);
+    function test_OwnershipTransferredFromSparkMultisigToSparkGovernance() public {
+        // 1: BurnerRouter
+        assertEq(OwnableUpgradeable(address(burnerRouter)).owner(), SPARK_GOVERNANCE);
+
+        (bool success, ) = address(burnerRouter).call(abi.encodeWithSignature("admin()"));
+        assertFalse(success);
+        assertEq(vm.load(address(burnerRouter), ADMIN_SLOT, bytes32(0)); // No admin slot
+
+        // 2. Vault
+        assertEq(OwnableUpgradeable(address(stSpk)).owner(), SPARK_GOVERNANCE);
+
+        // Admin is Vault Factory (not Multisig)
+        bytes32 adminSlot = vm.load(address(stSpk), ADMIN_SLOT);
+        address admin = address(uint160(uint256(raw))); // lower 20 bytes
+        assertEq(admin, VAULT_FACTORY);
+
+        assertTrue(stSpk.hasRole(stSpk.DEPOSIT_WHITELIST_SET_ROLE(), SPARK_GOVERNANCE));
+        assertTrue(stSpk.hasRole(stSpk.DEPOSITOR_WHITELIST_ROLE(), SPARK_GOVERNANCE));
+        assertTrue(stSpk.hasRole(stSpk.IS_DEPOSIT_LIMIT_SET_ROLE(), SPARK_GOVERNANCE));
+        assertTrue(stSpk.hasRole(stSpk.DEPOSIT_LIMIT_SET_ROLE(), SPARK_GOVERNANCE));
+
+        assertFalse(stSpk.hasRole(stSpk.DEPOSIT_WHITELIST_SET_ROLE(), SPARK_CONTROLLED_MULTISIG));
+        assertFalse(stSpk.hasRole(stSpk.DEPOSITOR_WHITELIST_ROLE(), SPARK_CONTROLLED_MULTISIG));
+        assertFalse(stSpk.hasRole(stSpk.IS_DEPOSIT_LIMIT_SET_ROLE(), SPARK_CONTROLLED_MULTISIG));
+        assertFalse(stSpk.hasRole(stSpk.DEPOSIT_LIMIT_SET_ROLE(), SPARK_CONTROLLED_MULTISIG));
+
+        assertTrue(stSpk.hasRole(DEFAULT_ADMIN_ROLE, SPARK_GOVERNANCE));
+        assertFalse(stSpk.hasRole(DEFAULT_ADMIN_ROLE, SPARK_CONTROLLED_MULTISIG));
     }
 }
