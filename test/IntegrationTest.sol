@@ -6,9 +6,6 @@ import "./BaseTest.sol";
 contract IntegrationTest is BaseTest {
 
     function test_e2e_fullDepositWithdrawClaimCycle() public {
-        // Step 0: Initialize epoch system with a deposit
-        _initializeEpochSystem();
-
         uint256 depositAmount  = 2000e18;
         uint256 withdrawAmount = 1500e18;
 
@@ -55,7 +52,6 @@ contract IntegrationTest is BaseTest {
 
     function test_e2e_vaultEcosystemIntegration() public {
         // Comprehensive test of stSpk interaction with Symbiotic ecosystem
-        _initializeEpochSystem();
 
         // 1. Verify stSpk is properly integrated with ecosystem components
         assertEq(stSpk.delegator(),       NETWORK_DELEGATOR, "Should use network delegator");
@@ -78,7 +74,7 @@ contract IntegrationTest is BaseTest {
 
         // Check delegation (funds should be managed by delegator)
         uint256 totalStake = stSpk.totalStake();
-        assertEq(totalStake, TOTAL_STAKE + depositAmount + 1e18, "Total stake should include at least Alice's deposit");
+        assertEq(totalStake, TOTAL_STAKE + depositAmount, "Total stake should include at least Alice's deposit");
 
         // Withdrawal
         uint256 withdrawAmount = 500e18;
@@ -112,8 +108,6 @@ contract IntegrationTest is BaseTest {
         // Test that shows how the delay system protects users who want to unstake
         // due to disagreement with slashing or governance decisions
 
-        _initializeEpochSystem();
-
         // Alice deposits and wants to unstake if slashing occurs
         uint256 depositAmount = 3000e18;
         vm.startPrank(alice);
@@ -143,7 +137,7 @@ contract IntegrationTest is BaseTest {
         assertGt(protectionWindow, 0,            "Users should have protection window to exit");
         assertLt(protectionWindow, BURNER_DELAY, "Protection window should be less than full burner delay");
 
-        uint256 activeStake          = ACTIVE_STAKE + 1e18 + depositAmount - withdrawAmount;
+        uint256 activeStake          = ACTIVE_STAKE + depositAmount - withdrawAmount;
         uint256 withdrawalsEpochNext = stSpk.withdrawals(currentEpoch + 1);
         assertEq(stSpk.activeStake(), activeStake, "Active stake should account for Alice's deposit and withdrawal");
 
@@ -153,7 +147,7 @@ contract IntegrationTest is BaseTest {
 
         stSpk.onSlash(slashAmount, uint48(block.timestamp));
 
-        // We have (in chronological order): ACTIVE_STAKE + 1e18 + depositAmount - withdrawAmount.
+        // We have (in chronological order): ACTIVE_STAKE + depositAmount - withdrawAmount.
         // Then we perform slash. Slash will pro-rata reduce active stake and withdrawals. The
         // algorithm `onSlash` follows is:
         // ✻ capture epoch == previous epoch: reduce: active stake, withdrawals[currentEpoch], withdrawals[nextEpoch]
