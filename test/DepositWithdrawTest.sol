@@ -106,12 +106,12 @@ contract TestDepositSuccessTests is BaseTest {
         assertEq(mintedShares,    depositAmount, "No shares minted");
 
         // Check balances after deposit
-        assertEq(spk.balanceOf(alice),   spkBalanceOfAlice  - depositAmount, "SPK not transferred");
-        assertEq(stSpk.balanceOf(alice), stSpkBalanceOfAlice + mintedShares, "stSpk not minted");
-        assertEq(stSpk.totalSupply(),    stSpkTotalSupply + mintedShares,    "Total supply not updated");
+        assertEq(spk.balanceOf(alice),   spkBalanceOfAlice   - depositAmount, "SPK not transferred");
+        assertEq(stSpk.balanceOf(alice), stSpkBalanceOfAlice + mintedShares,  "stSpk not minted");
+        assertEq(stSpk.totalSupply(),    stSpkTotalSupply    + mintedShares,  "Total supply not updated");
 
-        assertEq(stSpk.activeStake(),           ACTIVE_STAKE + depositAmount,      "Active stake not updated");
-        assertEq(stSpk.totalStake(),            TOTAL_STAKE + depositAmount,       "Total stake not updated");
+        assertEq(stSpk.activeStake(),           ACTIVE_STAKE      + depositAmount, "Active stake not updated");
+        assertEq(stSpk.totalStake(),            TOTAL_STAKE       + depositAmount, "Total stake not updated");
         assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk + depositAmount, "SPK not transferred to vault");
     }
 
@@ -137,8 +137,8 @@ contract TestDepositSuccessTests is BaseTest {
         assertEq(stSpk.balanceOf(alice), aliceShares,   "Alice shares incorrect");
         assertEq(stSpk.balanceOf(bob),   bobShares,     "Bob shares incorrect");
 
-        assertEq(stSpk.activeStake(),           ACTIVE_STAKE + 2 * depositAmount,      "Active stake not updated");
-        assertEq(stSpk.totalStake(),            TOTAL_STAKE + 2 * depositAmount,       "Total stake not updated");
+        assertEq(stSpk.activeStake(),           ACTIVE_STAKE      + 2 * depositAmount, "Active stake not updated");
+        assertEq(stSpk.totalStake(),            TOTAL_STAKE       + 2 * depositAmount, "Total stake not updated");
         assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk + 2 * depositAmount, "SPK not transferred to vault");
     }
 
@@ -162,8 +162,8 @@ contract TestDepositSuccessTests is BaseTest {
         uint256 slashableBalance = stSpk.slashableBalanceOf(alice);
 
         assertEq(slashableBalance,              depositAmount,                     "Invalid slashable balance for Alice");
-        assertEq(stSpk.activeStake(),           ACTIVE_STAKE + depositAmount,      "Active stake not updated");
-        assertEq(stSpk.totalStake(),            TOTAL_STAKE + depositAmount,       "Total stake not updated");
+        assertEq(stSpk.activeStake(),           ACTIVE_STAKE      + depositAmount, "Active stake not updated");
+        assertEq(stSpk.totalStake(),            TOTAL_STAKE       + depositAmount, "Total stake not updated");
         assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk + depositAmount, "SPK not transferred to vault");
     }
 
@@ -338,9 +338,9 @@ contract TestClaimSuccessTests is BaseTest {
         vm.prank(alice);
         uint256 claimedAmount = stSpk.claim(alice, currentEpoch + 1);
 
-        assertEq(claimedAmount,          withdrawAmount,                    "Invalid claimed amount");
-        assertEq(spk.balanceOf(alice),   spkBalanceOfAlice + claimedAmount, "SPK not received");
-        assertEq(stSpk.balanceOf(alice), depositAmount - withdrawAmount,    "Active shares not burned");
+        assertEq(claimedAmount,          withdrawAmount,                     "Invalid claimed amount");
+        assertEq(spk.balanceOf(alice),   spkBalanceOfAlice + claimedAmount,  "SPK not received");
+        assertEq(stSpk.balanceOf(alice), depositAmount     - withdrawAmount, "Active shares not burned");
         assertEq(stSpk.activeStake(), (
             ACTIVE_STAKE + depositAmount - withdrawAmount + 1e18
         ), "Active stake not updated");
@@ -438,9 +438,9 @@ contract TestClaimBatchSuccessTests is BaseTest {
         uint256 totalClaimed = stSpk.claimBatch(alice, withdrawalEpochs);
 
         // Verify batch claim
-        assertEq(totalClaimed,           1500e18,                            "Nothing claimed in batch");
-        assertEq(spk.balanceOf(alice),   aliceBalanceBefore + totalClaimed,  "SPK not received from batch claim");
-        assertEq(stSpk.balanceOf(alice), depositAmount - 3 * withdrawAmount, "Active shares not burned");
+        assertEq(totalClaimed,           1500e18,                                 "Nothing claimed in batch");
+        assertEq(spk.balanceOf(alice),   aliceBalanceBefore + totalClaimed,       "SPK not received from batch claim");
+        assertEq(stSpk.balanceOf(alice), depositAmount      - 3 * withdrawAmount, "Active shares not burned");
         assertEq(stSpk.activeStake(), (
             ACTIVE_STAKE + depositAmount - 3 * withdrawAmount
         ), "Active stake not updated");
@@ -517,10 +517,10 @@ contract TestRedeemSuccessTests is BaseTest {
         assertEq(redeemWithdrawalShares, redeemShares,   "No withdrawal shares minted");
 
         // Verify active shares were burned correctly
-        assertEq(stSpk.balanceOf(alice),        stSpkBalanceOfAlice - redeemShares, "Active shares not burned correctly");
-        assertEq(stSpk.activeStake(),           ACTIVE_STAKE + depositAmount - withdrawnAssets,      "Active stake not updated");
-        assertEq(stSpk.totalStake(),            TOTAL_STAKE + depositAmount,       "Total stake not updated");
-        assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk + depositAmount, "SPK not transferred to vault");
+        assertEq(stSpk.balanceOf(alice),        stSpkBalanceOfAlice - redeemShares,                    "Active shares not burned correctly");
+        assertEq(stSpk.activeStake(),           ACTIVE_STAKE        + depositAmount - withdrawnAssets, "Active stake not updated");
+        assertEq(stSpk.totalStake(),            TOTAL_STAKE         + depositAmount,                   "Total stake not updated");
+        assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk   + depositAmount,                   "SPK not transferred to vault");
 
         // Check withdrawal shares were created correctly
         uint256 withdrawalShares = stSpk.withdrawalsOf(currentEpoch + 1, alice);
