@@ -270,8 +270,6 @@ contract TestClaimFailureTests is BaseTest {
     }
 
     function test_claim_insufficientClaim() public {
-        _initializeEpochSystem();
-
         // Setup: Deposit and withdraw
         uint256 depositAmount  = 2000e18;
         uint256 withdrawAmount = 1000e18;
@@ -309,8 +307,6 @@ contract TestClaimSuccessTests is BaseTest {
     function test_claim() public {
         uint256 spkBalanceOfStSpk = spk.balanceOf(address(stSpk));
 
-        _initializeEpochSystem();
-
         // Setup: Deposit and withdraw
         uint256 depositAmount  = 2000e18;
         uint256 withdrawAmount = 1000e18;
@@ -342,15 +338,15 @@ contract TestClaimSuccessTests is BaseTest {
         assertEq(spk.balanceOf(alice),   spkBalanceOfAlice + claimedAmount, "SPK not received");
         assertEq(stSpk.balanceOf(alice), depositAmount - withdrawAmount,    "Active shares not burned");
         assertEq(stSpk.activeStake(), (
-            ACTIVE_STAKE + depositAmount - withdrawAmount + 1e18
+            ACTIVE_STAKE + depositAmount - withdrawAmount
         ), "Active stake not updated");
 
         // totalStake() is defined as activeStake() + withdrawals[currentEpoch] + withdrawals[nextEpoch].
         // Since we are warping by two full epochs, both withdrawal entries should be zeroed out now.
         // That is why the below will be `ACTIVE_STAKE + ..` not `TOTAL_STAKE + ..`.
-        assertEq(stSpk.totalStake(), ACTIVE_STAKE + depositAmount - withdrawAmount + 1e18, "Total stake updated");
+        assertEq(stSpk.totalStake(), ACTIVE_STAKE + depositAmount - withdrawAmount, "Total stake updated");
         assertEq(spk.balanceOf(address(stSpk)), (
-            spkBalanceOfStSpk + depositAmount - withdrawAmount + 1e18
+            spkBalanceOfStSpk + depositAmount - withdrawAmount
         ), "SPK not transferred to vault");
     }
 
@@ -360,8 +356,6 @@ contract TestClaimSuccessTests is BaseTest {
 contract TestClaimBatchFailureTests is BaseTest {
 
     function test_claimBatch_invalidRecipient() public {
-        _initializeEpochSystem();
-
         uint256[] memory epochs = new uint256[](1);
         epochs[0] = 1;
 
@@ -384,9 +378,6 @@ contract TestClaimBatchSuccessTests is BaseTest {
 
     function test_claimBatch() public {
         uint256 spkBalanceOfStSpk = spk.balanceOf(address(stSpk));
-
-        // Step 0: Initialize epoch system with a deposit
-        _initializeEpochSystem();
 
         // Provide more realistic scenario where a user withdraws mid-epoch
         skip(1 days);
@@ -450,7 +441,7 @@ contract TestClaimBatchSuccessTests is BaseTest {
         // That is why the below will be `ACTIVE_STAKE + ..` not `TOTAL_STAKE + ..`.
         assertEq(stSpk.totalStake(), ACTIVE_STAKE + depositAmount - 3 * withdrawAmount, "Total stake updated");
         assertEq(spk.balanceOf(address(stSpk)), (
-            spkBalanceOfStSpk + depositAmount - 3 * withdrawAmount + 1e18
+            spkBalanceOfStSpk + depositAmount - 3 * withdrawAmount
         ), "SPK not transferred to vault");
     }
 
