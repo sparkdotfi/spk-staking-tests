@@ -34,9 +34,6 @@ contract SlashingTest is BaseTest {
     }
 
     function skip_test_onlySlasherCanSlash() public {
-        // Initialize the system and add some deposits for slashing
-        // _initializeEpochSystem();
-
         uint256 depositAmount = 5000e18;
         vm.startPrank(alice);
         spk.approve(address(stSpk), depositAmount);
@@ -85,9 +82,6 @@ contract SlashingTest is BaseTest {
     }
 
     function skip_test_realSlashingScenario() public {
-        // Initialize epoch system and set up stSpk with deposits
-        // _initializeEpochSystem();
-
         // Setup: Alice deposits into stSpk
         uint256 depositAmount = 10000e18; // 10k SPK
         vm.startPrank(alice);
@@ -127,9 +121,6 @@ contract SlashingTest is BaseTest {
     }
 
     function skip_test_slashingAccessControl() public {
-        // Initialize system first to allow actual slashing verification
-        // _initializeEpochSystem();
-
         // Give Alice some tokens to deposit so slashing has an effect
         uint256 depositAmount = 2000e18;
         vm.startPrank(alice);
@@ -180,9 +171,6 @@ contract SlashingTest is BaseTest {
     }
 
     function skip_test_slashingImpactOnUserWithdrawals() public {
-        // Initialize and set up deposits
-        // _initializeEpochSystem();
-
         uint256 depositAmount = 5000e18;
 
         vm.startPrank(alice);
@@ -263,7 +251,6 @@ contract SlashingTest is BaseTest {
     // TODO: Refactor this
     function skip_test_completeSlashingFundFlow() public {
         // Test the complete slashing fund flow: stSpk -> burner router -> Spark Governance
-        // _initializeEpochSystem();
 
         // Setup: Alice deposits into stSpk
         uint256 depositAmount = 10000e18; // 10k SPK
@@ -321,7 +308,6 @@ contract SlashingTest is BaseTest {
 
     function skip_test_slashingWithVetoWindow() public {
         // Test that demonstrates the 3-day veto window concept
-        // _initializeEpochSystem();
 
         uint256 depositAmount = 5000e18;
 
@@ -493,7 +479,6 @@ contract SlashingTest is BaseTest {
 
     function skip_test_slashingProportionalImpact() public {
         // Simplified test for proportional slashing impact to avoid stack too deep
-        // _initializeEpochSystem();
 
         // Setup users with deposits
         uint256 aliceDeposit = 6000e18;  // 6k SPK
@@ -546,7 +531,6 @@ contract SlashingTest is BaseTest {
 
     function skip_test_preciseWithdrawalCalculationsAfterSlashing() public {
         // Test withdrawal calculations with multiple users and slashing scenarios
-        // _initializeEpochSystem();
 
         // Setup: Multiple users with different deposit amounts
         uint256 aliceDeposit = 3000e18;  // 3k SPK
