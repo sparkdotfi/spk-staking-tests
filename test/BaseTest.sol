@@ -54,6 +54,10 @@ abstract contract BaseTest is Test {
     uint48 constant EPOCH_DURATION        = 2 weeks;
     uint48 constant SLASHER_VETO_DURATION = 3 days;
 
+    // Roles
+    bytes32 constant DEFAULT_ADMIN_ROLE = 0x00;
+
+
     // Constants based on forked state
     uint256 ACTIVE_STAKE;
     uint256 TOTAL_STAKE;
@@ -93,6 +97,9 @@ abstract contract BaseTest is Test {
         subnetwork = bytes32(uint256(uint160(NETWORK)) << 96 | 0);  // Subnetwork.subnetwork(network, 0)
 
         _setupTestUsers();
+
+        _transferOwnershipFromSparkMultisigToSparkGovernance();
+        _testOwnershipTransferredFromSparkMultisigToSparkGovernance();
 
         /***********************************/
         /*** Do Hyperlane configuration  ***/
@@ -141,6 +148,27 @@ abstract contract BaseTest is Test {
         deal(SPK, attacker, 10_000e18);
     }
 
+    function _transferOwnershipFromSparkMultisigToSparkGovernance() internal {
+        vm.startPrank(SPARK_CONTROLLED_MULTISIG);
+
+        // 1: BurnerRouter
+        OwnableUpgradeable(address(burnerRouter)).transferOwnership(SPARK_GOVERNANCE);
+
+        // 2. Vault
+        stSpk.grantRole(DEFAULT_ADMIN_ROLE, SPARK_GOVERNANCE);
+        stSpk.renounceRole(DEFAULT_ADMIN_ROLE, SPARK_CONTROLLED_MULTISIG);
+
+    }
+
+    function _testOwnershipTransferredFromSparkMultisigToSparkGovernance() internal {
+        // 1: BurnerRouter
+        assertEq(OwnableUpgradeable(address(burnerRouter)).owner(), SPARK_GOVERNANCE);
+
+        // 2. Vault
+        assertTrue(stSpk.hasRole(DEFAULT_ADMIN_ROLE, SPARK_GOVERNANCE));
+        assertFalse(stSpk.hasRole(DEFAULT_ADMIN_ROLE, SPARK_CONTROLLED_MULTISIG));
+    }
+
     /**********************************************************************************************/
     /*** Helper functions                                                                       ***/
     /**********************************************************************************************/
@@ -170,4 +198,10 @@ abstract contract BaseTest is Test {
         return a >= b ? a - b : b - a;
     }
 
+}
+
+contract BaseTests is BaseTest {
+    function test_foo() public {
+        assertTrue(true);
+    }
 }

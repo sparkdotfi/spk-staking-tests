@@ -178,7 +178,6 @@ contract NetworkDelegatorDeploymentEventsTest is EventsTest {
     bytes32 private constant SET_NETWORK_LIMIT_SIG     = keccak256("SetNetworkLimit(bytes32,uint256)");
     bytes32 private constant SET_OPERATOR_SHARES_SIG   = keccak256("SetOperatorNetworkShares(bytes32,address,uint256)");
 
-    bytes32 private constant DEFAULT_ADMIN_ROLE               = 0x00;
     bytes32 private constant HOOK_SET_ROLE                    = keccak256("HOOK_SET_ROLE");
     bytes32 private constant NETWORK_LIMIT_SET_ROLE           = keccak256("NETWORK_LIMIT_SET_ROLE");
     bytes32 private constant OPERATOR_NETWORK_SHARES_SET_ROLE = keccak256("OPERATOR_NETWORK_SHARES_SET_ROLE");
@@ -266,7 +265,6 @@ contract StakedSPKVaultDeploymentEventsTest is EventsTest {
     bytes32 private constant UPGRADED_SIG              = keccak256("Upgraded(address)");
     bytes32 private constant WITHDRAW_SIG              = keccak256("Withdraw(address,address,uint256,uint256,uint256)");
 
-    bytes32 private constant DEFAULT_ADMIN_ROLE         = 0x00;
     bytes32 private constant DEPOSIT_LIMIT_SET_ROLE     = keccak256("DEPOSIT_LIMIT_SET_ROLE");
     bytes32 private constant DEPOSIT_WHITELIST_SET_ROLE = keccak256("DEPOSIT_WHITELIST_SET_ROLE");
     bytes32 private constant DEPOSITOR_WHITELIST_ROLE   = keccak256("DEPOSITOR_WHITELIST_ROLE");
