@@ -17,11 +17,12 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { INetworkMiddlewareService } from "../lib/core/src/interfaces/service/INetworkMiddlewareService.sol";
 import { INetworkRegistry }          from "../lib/core/src/interfaces/INetworkRegistry.sol";
 import { IOperatorRegistry }         from "../lib/core/src/interfaces/IOperatorRegistry.sol";
-import { INetworkRestakeDelegator }  from "../lib/core/src/interfaces/delegator/INetworkRestakeDelegator.sol";
+import { INetworkRestakeDelegator as INetworkRestakeDelegatorBase }  from "../lib/core/src/interfaces/delegator/INetworkRestakeDelegator.sol";
 import { IOptInService }             from "../lib/core/src/interfaces/service/IOptInService.sol";
 import { IVetoSlasher }              from "../lib/core/src/interfaces/slasher/IVetoSlasher.sol";
 
 interface IStakedSPK is IERC20Metadata, IVaultTokenized, IAccessControl {}
+interface INetworkRestakeDelegator is INetworkRestakeDelegatorBase, IAccessControl {}
 
 abstract contract BaseTest is Test {
 
@@ -175,10 +176,27 @@ abstract contract BaseTest is Test {
         stSpk.renounceRole(DEFAULT_ADMIN_ROLE, SPARK_CONTROLLED_MULTISIG);
 
         // 3. Delegator
+        assertEq(delegator.getRoleAdmin(delegator.HOOK_SET_ROLE()), DEFAULT_ADMIN_ROLE);
+        assertTrue(delegator.hasRole(delegator.HOOK_SET_ROLE(), SPARK_CONTROLLED_MULTISIG));
+        assertTrue(delegator.hasRole(DEFAULT_ADMIN_ROLE, SPARK_CONTROLLED_MULTISIG));
 
+        delegator.grantRole(delegator.HOOK_SET_ROLE(), SPARK_GOVERNANCE);
+        // TODO: given the above assertions, both of these lines should pass but neither does
+        delegator.renounceRole(delegator.HOOK_SET_ROLE(), SPARK_CONTROLLED_MULTISIG);
+        // delegator.revokeRole(delegator.HOOK_SET_ROLE(), SPARK_CONTROLLED_MULTISIG);
+
+
+        // delegator.renounceRole(delegator.NETWORK_LIMIT_SET_ROLE(), SPARK_CONTROLLED_MULTISIG);
+        // delegator.grantRole(delegator.NETWORK_LIMIT_SET_ROLE(), SPARK_GOVERNANCE);
+        //
+        // delegator.renounceRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), SPARK_CONTROLLED_MULTISIG);
+        // delegator.grantRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), SPARK_GOVERNANCE);
+        //
+        // delegator.grantRole(DEFAULT_ADMIN_ROLE, SPARK_GOVERNANCE);
+        // delegator.renounceRole(DEFAULT_ADMIN_ROLE, SPARK_CONTROLLED_MULTISIG);
 
         // 4. Slasher
-
+        // Nothing.
     }
 
     /**********************************************************************************************/
@@ -214,19 +232,27 @@ abstract contract BaseTest is Test {
 
 contract BaseTests is BaseTest {
     function test_OwnershipTransferredFromSparkMultisigToSparkGovernance() public {
+        // vm.startPrank(SPARK_CONTROLLED_MULTISIG);
+
+        // delegator.renounceRole(delegator.HOOK_SET_ROLE(), SPARK_CONTROLLED_MULTISIG);
+        // delegator.revokeRole(delegator.HOOK_SET_ROLE(), SPARK_CONTROLLED_MULTISIG);
+
         // 1: BurnerRouter
         assertEq(OwnableUpgradeable(address(burnerRouter)).owner(), SPARK_GOVERNANCE);
 
+        // No admin()
         (bool success, ) = address(burnerRouter).call(abi.encodeWithSignature("admin()"));
         assertFalse(success);
-        assertEq(vm.load(address(burnerRouter), ADMIN_SLOT, bytes32(0)); // No admin slot
+
+        // No admin slot
+        assertEq(vm.load(address(burnerRouter), ADMIN_SLOT), bytes32(0));
 
         // 2. Vault
         assertEq(OwnableUpgradeable(address(stSpk)).owner(), SPARK_GOVERNANCE);
 
         // Admin is Vault Factory (not Multisig)
         bytes32 adminSlot = vm.load(address(stSpk), ADMIN_SLOT);
-        address admin = address(uint160(uint256(raw))); // lower 20 bytes
+        address admin = address(uint160(uint256(adminSlot))); // lower 20 bytes
         assertEq(admin, VAULT_FACTORY);
 
         assertTrue(stSpk.hasRole(stSpk.DEPOSIT_WHITELIST_SET_ROLE(), SPARK_GOVERNANCE));
@@ -241,5 +267,39 @@ contract BaseTests is BaseTest {
 
         assertTrue(stSpk.hasRole(DEFAULT_ADMIN_ROLE, SPARK_GOVERNANCE));
         assertFalse(stSpk.hasRole(DEFAULT_ADMIN_ROLE, SPARK_CONTROLLED_MULTISIG));
+
+        // 3. Delegator
+        // No owner
+        (bool success2, ) = address(delegator).call(abi.encodeWithSignature("owner()"));
+        assertFalse(success2);
+
+        // No admin()
+        (bool success3, ) = address(delegator).call(abi.encodeWithSignature("admin()"));
+        assertFalse(success3);
+
+        // No admin slot
+        assertEq(vm.load(address(delegator), ADMIN_SLOT), bytes32(0));
+
+        // TODO:
+        assertTrue(delegator.hasRole(delegator.NETWORK_LIMIT_SET_ROLE(), SPARK_GOVERNANCE));
+        assertFalse(delegator.hasRole(delegator.NETWORK_LIMIT_SET_ROLE(), SPARK_CONTROLLED_MULTISIG));
+        assertTrue(delegator.hasRole(DEFAULT_ADMIN_ROLE, SPARK_GOVERNANCE));
+        assertFalse(delegator.hasRole(DEFAULT_ADMIN_ROLE, SPARK_CONTROLLED_MULTISIG));
+
+        // 4. Slasher
+        // No owner
+        (bool success4, ) = address(slasher).call(abi.encodeWithSignature("owner()"));
+        assertFalse(success4);
+
+        // No admin()
+        (bool success5, ) = address(slasher).call(abi.encodeWithSignature("admin()"));
+        assertFalse(success5);
+
+        // No admin slot
+        assertEq(vm.load(address(slasher), ADMIN_SLOT), bytes32(0));
+
+        // No roles
+        (bool success6, ) = address(slasher).call(abi.encodeWithSignature("hasRole(bytes32,address)", DEFAULT_ADMIN_ROLE, SPARK_GOVERNANCE));
+        assertFalse(success6);
     }
 }
