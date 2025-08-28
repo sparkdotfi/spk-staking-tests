@@ -162,20 +162,16 @@ contract IntegrationTest is BaseTest {
         uint256 slashableAmount         = activeStake + withdrawalsEpochNext;
         uint256 activeSlashedAmount     = activeStake * slashAmount / slashableAmount;
         uint256 withdrawalSlashedAmount = slashAmount - activeSlashedAmount;
-        assertEq(stSpk.activeStake(),                 activeStake - activeSlashedAmount,
-                 "Active stake should reduce by pro-rata slash amount");
-        assertEq(stSpk.withdrawals(currentEpoch + 1), withdrawalsEpochNext - withdrawalSlashedAmount,
-                 "Withdrawals for next epoch should reduce by pro-rata slash amount");
+        assertEq(stSpk.activeStake(),                 activeStake          - activeSlashedAmount);
+        assertEq(stSpk.withdrawals(currentEpoch + 1), withdrawalsEpochNext - withdrawalSlashedAmount);
 
         // Fast forward to when Alice can claim
         vm.warp(aliceClaimTime + 1);
 
         // Assuming we haven't crossed the boundary of next epoch, activeStake and withdrawals
         // should stay the same
-        assertEq(stSpk.activeStake(),                 activeStake - activeSlashedAmount,
-                 "Active stake should remain the same before new epoch");
-        assertEq(stSpk.withdrawals(currentEpoch + 1), withdrawalsEpochNext - withdrawalSlashedAmount,
-                 "Withdrawals for next epoch should remain the same before new epoch");
+        assertEq(stSpk.activeStake(),                 activeStake          - activeSlashedAmount);
+        assertEq(stSpk.withdrawals(currentEpoch + 1), withdrawalsEpochNext - withdrawalSlashedAmount);
 
         // Alice can still claim her withdrawal despite slashing
         uint256 withdrawalEpoch = currentEpoch + 1;
