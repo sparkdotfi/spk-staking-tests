@@ -185,7 +185,6 @@ contract IntegrationTest is BaseTest {
 
     function test_e2e_complexMultiUserScenario() public {
         // Test a complex scenario with multiple users, deposits, withdrawals, and slashing
-        _initializeEpochSystem();
 
         // Multiple users deposit different amounts
         uint256[] memory depositAmounts = new uint256[](3);
@@ -271,8 +270,6 @@ contract IntegrationTest is BaseTest {
     function test_e2e_slashingDoesNotAffectExistingWithdrawals() public {
         // Test that slashing after withdrawal initiation doesn't affect the withdrawal amount
         // This verifies that withdrawal shares represent a fixed claim on underlying assets
-
-        _initializeEpochSystem();
 
         // Alice deposits
         uint256 depositAmount = 5000e18;

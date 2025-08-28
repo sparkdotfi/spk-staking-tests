@@ -152,16 +152,16 @@ abstract contract BaseTest is Test {
      * @notice Helper function to initialize the epoch system with a deposit
      * @dev The epoch system starts when the first deposit is made
      */
-    function _initializeEpochSystem() internal {
-        // Make a small deposit to start the epoch system
-        address initialDepositor = makeAddr("epochInitializer");
-        deal(SPK, initialDepositor, 1e18); // 1 SPK
-
-        vm.startPrank(initialDepositor);
-        spk.approve(address(stSpk), 1e18);
-        stSpk.deposit(initialDepositor, 1e18);
-        vm.stopPrank();
-    }
+    // function _initializeEpochSystem() internal {
+    //     // Make a small deposit to start the epoch system
+    //     address initialDepositor = makeAddr("epochInitializer");
+    //     deal(SPK, initialDepositor, 1e18); // 1 SPK
+    //
+    //     vm.startPrank(initialDepositor);
+    //     spk.approve(address(stSpk), 1e18);
+    //     stSpk.deposit(initialDepositor, 1e18);
+    //     vm.stopPrank();
+    // }
 
     /**
      * @notice Helper function to calculate absolute difference between two numbers
