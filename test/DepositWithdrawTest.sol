@@ -161,7 +161,8 @@ contract TestDepositSuccessTests is BaseTest {
         // Check slashable balance
         uint256 slashableBalance = stSpk.slashableBalanceOf(alice);
 
-        assertEq(slashableBalance,              depositAmount,                     "Invalid slashable balance for Alice");
+        assertEq(slashableBalance, depositAmount, "Invalid slashable balance for Alice");
+
         assertEq(stSpk.activeStake(),           ACTIVE_STAKE      + depositAmount, "Active stake not updated");
         assertEq(stSpk.totalStake(),            TOTAL_STAKE       + depositAmount, "Total stake not updated");
         assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk + depositAmount, "SPK not transferred to vault");
@@ -233,6 +234,7 @@ contract TestWithdrawSuccessTests is BaseTest {
         uint256 withdrawalShares = stSpk.withdrawalsOf(currentEpoch + 1, alice);
 
         assertEq(withdrawalShares, mintedWithdrawalShares, "Withdrawal shares mismatch");
+
         assertEq(stSpk.activeStake(),           ACTIVE_STAKE      + depositAmount - withdrawAmount, "Active stake not updated");
         assertEq(stSpk.totalStake(),            TOTAL_STAKE       + depositAmount,                  "Total stake not updated");
         assertEq(spk.balanceOf(address(stSpk)), spkBalanceOfStSpk + depositAmount,                  "SPK not transferred to vault");
@@ -334,7 +336,8 @@ contract TestClaimSuccessTests is BaseTest {
         vm.prank(alice);
         uint256 claimedAmount = stSpk.claim(alice, currentEpoch + 1);
 
-        assertEq(claimedAmount,          withdrawAmount,                                            "Invalid claimed amount");
+        assertEq(claimedAmount, withdrawAmount, "Invalid claimed amount");
+
         assertEq(spk.balanceOf(alice),   spkBalanceOfAlice + claimedAmount,                         "SPK not received");
         assertEq(stSpk.balanceOf(alice), depositAmount     - withdrawAmount,                        "Active shares not burned");
         assertEq(stSpk.activeStake(),    ACTIVE_STAKE      + depositAmount - withdrawAmount + 1e18, "Active stake not updated");
