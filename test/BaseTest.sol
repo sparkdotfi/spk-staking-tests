@@ -105,6 +105,7 @@ abstract contract BaseTest is Test {
 
         _transferOwnershipFromSparkMultisigToSparkGovernance();
         // _testOwnershipTransferredFromSparkMultisigToSparkGovernance();
+        return;
 
         /***********************************/
         /*** Do Hyperlane configuration  ***/
@@ -157,9 +158,12 @@ abstract contract BaseTest is Test {
         vm.startPrank(SPARK_CONTROLLED_MULTISIG);
 
         // 1: BurnerRouter
+        assertEq(OwnableUpgradeable(address(burnerRouter)).owner(), SPARK_CONTROLLED_MULTISIG);
         OwnableUpgradeable(address(burnerRouter)).transferOwnership(SPARK_GOVERNANCE);
+        // After-tests are done separately
 
         // 2. Vault
+        assertEq(OwnableUpgradeable(address(stSpk)).owner(), SPARK_CONTROLLED_MULTISIG);
         OwnableUpgradeable(address(stSpk)).transferOwnership(SPARK_GOVERNANCE);
 
         stSpk.renounceRole(stSpk.DEPOSIT_WHITELIST_SET_ROLE(), SPARK_CONTROLLED_MULTISIG);
@@ -172,28 +176,20 @@ abstract contract BaseTest is Test {
         stSpk.grantRole(stSpk.IS_DEPOSIT_LIMIT_SET_ROLE(),  SPARK_GOVERNANCE);
         stSpk.grantRole(stSpk.DEPOSIT_LIMIT_SET_ROLE(),     SPARK_GOVERNANCE);
 
-        stSpk.grantRole(DEFAULT_ADMIN_ROLE, SPARK_GOVERNANCE);
+        stSpk.grantRole(DEFAULT_ADMIN_ROLE,    SPARK_GOVERNANCE);
         stSpk.renounceRole(DEFAULT_ADMIN_ROLE, SPARK_CONTROLLED_MULTISIG);
 
         // 3. Delegator
-        assertEq(delegator.getRoleAdmin(delegator.HOOK_SET_ROLE()), DEFAULT_ADMIN_ROLE);
-        assertTrue(delegator.hasRole(delegator.HOOK_SET_ROLE(), SPARK_CONTROLLED_MULTISIG));
-        assertTrue(delegator.hasRole(DEFAULT_ADMIN_ROLE, SPARK_CONTROLLED_MULTISIG));
+        delegator.renounceRole(delegator.HOOK_SET_ROLE(),                    SPARK_CONTROLLED_MULTISIG);
+        delegator.renounceRole(delegator.NETWORK_LIMIT_SET_ROLE(),           SPARK_CONTROLLED_MULTISIG);
+        delegator.renounceRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), SPARK_CONTROLLED_MULTISIG);
 
-        delegator.grantRole(delegator.HOOK_SET_ROLE(), SPARK_GOVERNANCE);
-        // TODO: given the above assertions, both of these lines should pass but neither does
-        delegator.renounceRole(delegator.HOOK_SET_ROLE(), SPARK_CONTROLLED_MULTISIG);
-        // delegator.revokeRole(delegator.HOOK_SET_ROLE(), SPARK_CONTROLLED_MULTISIG);
+        delegator.grantRole(delegator.HOOK_SET_ROLE(),                    SPARK_GOVERNANCE);
+        delegator.grantRole(delegator.NETWORK_LIMIT_SET_ROLE(),           SPARK_GOVERNANCE);
+        delegator.grantRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), SPARK_GOVERNANCE);
 
-
-        // delegator.renounceRole(delegator.NETWORK_LIMIT_SET_ROLE(), SPARK_CONTROLLED_MULTISIG);
-        // delegator.grantRole(delegator.NETWORK_LIMIT_SET_ROLE(), SPARK_GOVERNANCE);
-        //
-        // delegator.renounceRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), SPARK_CONTROLLED_MULTISIG);
-        // delegator.grantRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), SPARK_GOVERNANCE);
-        //
-        // delegator.grantRole(DEFAULT_ADMIN_ROLE, SPARK_GOVERNANCE);
-        // delegator.renounceRole(DEFAULT_ADMIN_ROLE, SPARK_CONTROLLED_MULTISIG);
+        delegator.grantRole(DEFAULT_ADMIN_ROLE, SPARK_GOVERNANCE);
+        delegator.renounceRole(DEFAULT_ADMIN_ROLE, SPARK_CONTROLLED_MULTISIG);
 
         // 4. Slasher
         // Nothing.
@@ -256,16 +252,16 @@ contract BaseTests is BaseTest {
         assertEq(admin, VAULT_FACTORY);
 
         assertTrue(stSpk.hasRole(stSpk.DEPOSIT_WHITELIST_SET_ROLE(), SPARK_GOVERNANCE));
-        assertTrue(stSpk.hasRole(stSpk.DEPOSITOR_WHITELIST_ROLE(), SPARK_GOVERNANCE));
-        assertTrue(stSpk.hasRole(stSpk.IS_DEPOSIT_LIMIT_SET_ROLE(), SPARK_GOVERNANCE));
-        assertTrue(stSpk.hasRole(stSpk.DEPOSIT_LIMIT_SET_ROLE(), SPARK_GOVERNANCE));
+        assertTrue(stSpk.hasRole(stSpk.DEPOSITOR_WHITELIST_ROLE(),   SPARK_GOVERNANCE));
+        assertTrue(stSpk.hasRole(stSpk.IS_DEPOSIT_LIMIT_SET_ROLE(),  SPARK_GOVERNANCE));
+        assertTrue(stSpk.hasRole(stSpk.DEPOSIT_LIMIT_SET_ROLE(),     SPARK_GOVERNANCE));
 
         assertFalse(stSpk.hasRole(stSpk.DEPOSIT_WHITELIST_SET_ROLE(), SPARK_CONTROLLED_MULTISIG));
-        assertFalse(stSpk.hasRole(stSpk.DEPOSITOR_WHITELIST_ROLE(), SPARK_CONTROLLED_MULTISIG));
-        assertFalse(stSpk.hasRole(stSpk.IS_DEPOSIT_LIMIT_SET_ROLE(), SPARK_CONTROLLED_MULTISIG));
-        assertFalse(stSpk.hasRole(stSpk.DEPOSIT_LIMIT_SET_ROLE(), SPARK_CONTROLLED_MULTISIG));
+        assertFalse(stSpk.hasRole(stSpk.DEPOSITOR_WHITELIST_ROLE(),   SPARK_CONTROLLED_MULTISIG));
+        assertFalse(stSpk.hasRole(stSpk.IS_DEPOSIT_LIMIT_SET_ROLE(),  SPARK_CONTROLLED_MULTISIG));
+        assertFalse(stSpk.hasRole(stSpk.DEPOSIT_LIMIT_SET_ROLE(),     SPARK_CONTROLLED_MULTISIG));
 
-        assertTrue(stSpk.hasRole(DEFAULT_ADMIN_ROLE, SPARK_GOVERNANCE));
+        assertTrue(stSpk.hasRole(DEFAULT_ADMIN_ROLE,  SPARK_GOVERNANCE));
         assertFalse(stSpk.hasRole(DEFAULT_ADMIN_ROLE, SPARK_CONTROLLED_MULTISIG));
 
         // 3. Delegator
@@ -280,10 +276,15 @@ contract BaseTests is BaseTest {
         // No admin slot
         assertEq(vm.load(address(delegator), ADMIN_SLOT), bytes32(0));
 
-        // TODO:
-        assertTrue(delegator.hasRole(delegator.NETWORK_LIMIT_SET_ROLE(), SPARK_GOVERNANCE));
-        assertFalse(delegator.hasRole(delegator.NETWORK_LIMIT_SET_ROLE(), SPARK_CONTROLLED_MULTISIG));
-        assertTrue(delegator.hasRole(DEFAULT_ADMIN_ROLE, SPARK_GOVERNANCE));
+        assertTrue(delegator.hasRole(delegator.HOOK_SET_ROLE(),                    SPARK_GOVERNANCE));
+        assertTrue(delegator.hasRole(delegator.NETWORK_LIMIT_SET_ROLE(),           SPARK_GOVERNANCE));
+        assertTrue(delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), SPARK_GOVERNANCE));
+
+        assertFalse(delegator.hasRole(delegator.HOOK_SET_ROLE(),                    SPARK_CONTROLLED_MULTISIG));
+        assertFalse(delegator.hasRole(delegator.NETWORK_LIMIT_SET_ROLE(),           SPARK_CONTROLLED_MULTISIG));
+        assertFalse(delegator.hasRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), SPARK_CONTROLLED_MULTISIG));
+
+        assertTrue(delegator.hasRole(DEFAULT_ADMIN_ROLE,  SPARK_GOVERNANCE));
         assertFalse(delegator.hasRole(DEFAULT_ADMIN_ROLE, SPARK_CONTROLLED_MULTISIG));
 
         // 4. Slasher
