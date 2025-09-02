@@ -204,7 +204,7 @@ contract GovernanceSlashingTest is BaseTest {
 
         skip(3 days - 1 seconds);  // Demonstrate multisig has a full three days from request to veto
 
-        vm.prank(OWNER_MULTISIG);
+        vm.prank(SPARK_GOVERNANCE);
         slasher.vetoSlash(slashIndex, "");
 
         ( ,, amount,,, completed ) = slasher.slashRequests(slashIndex);

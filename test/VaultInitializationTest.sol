@@ -34,11 +34,11 @@ contract VaultInitializationTest is BaseTest {
         bytes32 isDepositLimitSetRole   = keccak256("IS_DEPOSIT_LIMIT_SET_ROLE");
         bytes32 depositLimitSetRole     = keccak256("DEPOSIT_LIMIT_SET_ROLE");
 
-        assertTrue(stSpk.hasRole(defaultAdminRole,        OWNER_MULTISIG), "Missing DEFAULT_ADMIN_ROLE");
-        assertTrue(stSpk.hasRole(depositWhitelistSetRole, OWNER_MULTISIG), "Missing DEPOSIT_WHITELIST_SET_ROLE");
-        assertTrue(stSpk.hasRole(depositorWhitelistRole,  OWNER_MULTISIG), "Missing DEPOSITOR_WHITELIST_ROLE");
-        assertTrue(stSpk.hasRole(isDepositLimitSetRole,   OWNER_MULTISIG), "Missing IS_DEPOSIT_LIMIT_SET_ROLE");
-        assertTrue(stSpk.hasRole(depositLimitSetRole,     OWNER_MULTISIG), "Missing DEPOSIT_LIMIT_SET_ROLE");
+        assertTrue(stSpk.hasRole(defaultAdminRole,        SPARK_GOVERNANCE), "Missing DEFAULT_ADMIN_ROLE");
+        assertTrue(stSpk.hasRole(depositWhitelistSetRole, SPARK_GOVERNANCE), "Missing DEPOSIT_WHITELIST_SET_ROLE");
+        assertTrue(stSpk.hasRole(depositorWhitelistRole,  SPARK_GOVERNANCE), "Missing DEPOSITOR_WHITELIST_ROLE");
+        assertTrue(stSpk.hasRole(isDepositLimitSetRole,   SPARK_GOVERNANCE), "Missing IS_DEPOSIT_LIMIT_SET_ROLE");
+        assertTrue(stSpk.hasRole(depositLimitSetRole,     SPARK_GOVERNANCE), "Missing DEPOSIT_LIMIT_SET_ROLE");
     }
 
     function test_DelegatorAndSlasherAlreadySet() public view {
@@ -142,14 +142,16 @@ contract VaultInitializationTest is BaseTest {
         bytes32 setNetworkLimitRole          = keccak256("NETWORK_LIMIT_SET_ROLE");
         bytes32 setOperatorNetworkSharesRole = keccak256("OPERATOR_NETWORK_SHARES_SET_ROLE");
 
-        assertTrue(networkDelegator.hasRole(defaultAdminRole,             OWNER_MULTISIG), "Missing DEFAULT_ADMIN_ROLE");
-        assertTrue(networkDelegator.hasRole(setNetworkLimitRole,          OWNER_MULTISIG), "Missing NETWORK_LIMIT_SET_ROLE");
-        assertTrue(networkDelegator.hasRole(setOperatorNetworkSharesRole, OWNER_MULTISIG), "Missing OPERATOR_NETWORK_SHARES_SET_ROLE");
+        assertTrue(networkDelegator.hasRole(defaultAdminRole,             SPARK_GOVERNANCE), "Missing DEFAULT_ADMIN_ROLE");
+        assertTrue(networkDelegator.hasRole(setNetworkLimitRole,          SPARK_GOVERNANCE), "Missing NETWORK_LIMIT_SET_ROLE");
+        assertTrue(networkDelegator.hasRole(setOperatorNetworkSharesRole, SPARK_GOVERNANCE), "Missing OPERATOR_NETWORK_SHARES_SET_ROLE");
     }
 
 }
 
 contract EventsTest is BaseTest {
+
+    address constant OWNER_MULTISIG = SPARK_CONTROLLED_MULTISIG;
 
     uint256 constant START_BLOCK = 20000000;  // June 1, 2024 - well before all deployments
 
