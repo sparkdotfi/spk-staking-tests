@@ -80,9 +80,6 @@ contract VaultInitializationTest is BaseTest {
     }
 
     function test_EpochFunctions() public {
-        // Initialize epoch system first
-        _initializeEpochSystem();
-
         // Record initial epoch state with precise values
         uint48 epochDurationInit  = stSpk.epochDurationInit();
         uint256 currentEpoch      = stSpk.currentEpoch();
