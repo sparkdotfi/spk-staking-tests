@@ -46,8 +46,9 @@ abstract contract BaseTest is Test {
     address constant SPARK_CONTROLLED_MULTISIG = 0x7a27a9f2A823190140cfb4027f4fBbfA438bac79;
     address constant SPARK_GOVERNANCE          = 0x3300f198988e4C9C63F75dF86De36421f06af8c4;
 
-    address constant NETWORK        = SPARK_GOVERNANCE;
-    address constant OPERATOR       = SPARK_GOVERNANCE;
+    address constant NETWORK   = SPARK_GOVERNANCE;
+    address constant OWNER     = SPARK_GOVERNANCE;
+    address constant OPERATOR  = SPARK_GOVERNANCE;
 
     // Token
     address constant SPK = 0xc20059e0317DE91738d13af027DfC4a50781b066;
@@ -102,8 +103,8 @@ abstract contract BaseTest is Test {
 
         _setupTestUsers();
 
-        _transferOwnershipFromSparkMultisigToSparkGovernance();
-        _testOwnershipTransferredFromSparkMultisigToSparkGovernance();
+        _transferOwnershipToGovernance();
+        _testOwnershipTransfer();
 
         /***********************************/
         /*** Do Hyperlane configuration  ***/
@@ -111,13 +112,15 @@ abstract contract BaseTest is Test {
 
         // --- Step 1: Do configurations as network, DO NOT SET middleware, max network limit, and resolver
 
-        vm.startPrank(SPARK_GOVERNANCE);
+        vm.startPrank(NETWORK);
         networkRegistry.registerNetwork();
         delegator.setMaxNetworkLimit(0, 2_000_000e18);
-        slasher.setResolver(0, SPARK_GOVERNANCE, "");
+        slasher.setResolver(0, OWNER, "");
+        vm.stopPrank();
 
         // --- Step 2: Configure the network and operator to take control of 2m SPK stake as the vault owner
 
+        vm.startPrank(OWNER);
         delegator.setNetworkLimit(subnetwork, 2_000_000e18);
         delegator.setOperatorNetworkShares(
             subnetwork,
@@ -126,19 +129,21 @@ abstract contract BaseTest is Test {
         );
         delegator.setHook(RESET_HOOK);
         IAccessControl(address(delegator)).grantRole(delegator.OPERATOR_NETWORK_SHARES_SET_ROLE(), RESET_HOOK);
+        vm.stopPrank();
 
         assertEq(delegator.totalOperatorNetworkSharesAt(subnetwork, uint48(block.timestamp), ""), 1e18);
 
         // --- Step 3: Opt in to the vault as the operator
 
+        vm.startPrank(OPERATOR);
         operatorRegistry.registerOperator();
         IOptInService(delegator.OPERATOR_NETWORK_OPT_IN_SERVICE()).optIn(NETWORK);
         IOptInService(delegator.OPERATOR_VAULT_OPT_IN_SERVICE()).optIn(address(stSpk));
+        vm.stopPrank();
 
         // --- Step 4: Check that points requirements are met
 
         assertEq(delegator.stake(subnetwork, OPERATOR), 2_000_000e18);
-        vm.stopPrank();
     }
 
     function _setupTestUsers() internal {
@@ -148,7 +153,7 @@ abstract contract BaseTest is Test {
         deal(SPK, attacker, 10_000e18);
     }
 
-    function _transferOwnershipFromSparkMultisigToSparkGovernance() internal {
+    function _transferOwnershipToGovernance() internal {
         vm.startPrank(SPARK_CONTROLLED_MULTISIG);
 
         // 1: BurnerRouter
@@ -189,7 +194,7 @@ abstract contract BaseTest is Test {
         // Nothing.
     }
 
-    function _testOwnershipTransferredFromSparkMultisigToSparkGovernance() public {
+    function _testOwnershipTransfer() public {
         // 1: BurnerRouter
         // Correct owner
         assertEq(OwnableUpgradeable(address(burnerRouter)).owner(), SPARK_GOVERNANCE);
