@@ -6,9 +6,6 @@ import "./BaseTest.sol";
 contract IntegrationTest is BaseTest {
 
     function test_e2e_fullDepositWithdrawClaimCycle() public {
-        // Step 0: Initialize epoch system with a deposit
-        _initializeEpochSystem();
-
         uint256 depositAmount  = 2000e18;
         uint256 withdrawAmount = 1500e18;
 
@@ -55,7 +52,6 @@ contract IntegrationTest is BaseTest {
 
     function test_e2e_vaultEcosystemIntegration() public {
         // Comprehensive test of stSpk interaction with Symbiotic ecosystem
-        _initializeEpochSystem();
 
         // 1. Verify stSpk is properly integrated with ecosystem components
         assertEq(stSpk.delegator(),       NETWORK_DELEGATOR, "Should use network delegator");
@@ -78,7 +74,7 @@ contract IntegrationTest is BaseTest {
 
         // Check delegation (funds should be managed by delegator)
         uint256 totalStake = stSpk.totalStake();
-        assertEq(totalStake, TOTAL_STAKE + depositAmount + 1e18, "Total stake should include at least Alice's deposit");
+        assertEq(totalStake, TOTAL_STAKE + depositAmount, "Total stake should include at least Alice's deposit");
 
         // Withdrawal
         uint256 withdrawAmount = 500e18;
@@ -112,8 +108,6 @@ contract IntegrationTest is BaseTest {
         // Test that shows how the delay system protects users who want to unstake
         // due to disagreement with slashing or governance decisions
 
-        _initializeEpochSystem();
-
         // Alice deposits and wants to unstake if slashing occurs
         uint256 depositAmount = 3000e18;
         vm.startPrank(alice);
@@ -143,27 +137,50 @@ contract IntegrationTest is BaseTest {
         assertGt(protectionWindow, 0,            "Users should have protection window to exit");
         assertLt(protectionWindow, BURNER_DELAY, "Protection window should be less than full burner delay");
 
+        uint256 activeStake          = ACTIVE_STAKE + depositAmount - withdrawAmount;
+        uint256 withdrawalsEpochNext = stSpk.withdrawals(currentEpoch + 1);
+        assertEq(stSpk.activeStake(), activeStake, "Active stake should account for Alice's deposit and withdrawal");
+
         // Simulate slashing during Alice's unstaking period
         uint256 slashAmount = 300e18;
         vm.prank(VETO_SLASHER);
+
         stSpk.onSlash(slashAmount, uint48(block.timestamp));
+
+        // We have (in chronological order): ACTIVE_STAKE + depositAmount - withdrawAmount.
+        // Then we perform slash. Slash will pro-rata reduce active stake and withdrawals. The
+        // algorithm `onSlash` follows is:
+        // ✻ capture epoch == previous epoch: reduce: active stake, withdrawals[currentEpoch], withdrawals[nextEpoch]
+        // ✻ capture epoch == current epoch : reduce: active stake, withdrawals[nextEpoch]
+        // Sinc we are passing in current timestamp, we are in the second case.
+        uint256 slashableAmount         = activeStake + withdrawalsEpochNext;
+        uint256 activeSlashedAmount     = activeStake * slashAmount / slashableAmount;
+        uint256 withdrawalSlashedAmount = slashAmount - activeSlashedAmount;
+        assertEq(stSpk.activeStake(),                 activeStake          - activeSlashedAmount);
+        assertEq(stSpk.withdrawals(currentEpoch + 1), withdrawalsEpochNext - withdrawalSlashedAmount);
 
         // Fast forward to when Alice can claim
         vm.warp(aliceClaimTime + 1);
+
+        // Assuming we haven't crossed the boundary of next epoch, activeStake and withdrawals
+        // should stay the same
+        assertEq(stSpk.activeStake(),                 activeStake          - activeSlashedAmount);
+        assertEq(stSpk.withdrawals(currentEpoch + 1), withdrawalsEpochNext - withdrawalSlashedAmount);
 
         // Alice can still claim her withdrawal despite slashing
         uint256 withdrawalEpoch = currentEpoch + 1;
         vm.prank(alice);
         uint256 claimedAmount = stSpk.claim(alice, withdrawalEpoch);
-        uint256 expectedClaimedAmount = withdrawAmount - (withdrawAmount * slashAmount / (TOTAL_STAKE + depositAmount + 1e18));
+
+        // Alice's claimed amount should have reduced pro-rata (as all other withdrawals for next epoch).
+        uint256 expClaimedAmount = withdrawAmount - (withdrawAmount * slashAmount / slashableAmount);
 
         // Allow for small rounding errors
-        assertApproxEqAbs(claimedAmount, expectedClaimedAmount, 1, "Alice should still be able to claim and exit");
+        assertApproxEqAbs(claimedAmount, expClaimedAmount, 1, "Alice should still be able to claim and exit");
     }
 
     function test_e2e_complexMultiUserScenario() public {
         // Test a complex scenario with multiple users, deposits, withdrawals, and slashing
-        _initializeEpochSystem();
 
         // Multiple users deposit different amounts
         uint256[] memory depositAmounts = new uint256[](3);
@@ -249,8 +266,6 @@ contract IntegrationTest is BaseTest {
     function test_e2e_slashingDoesNotAffectExistingWithdrawals() public {
         // Test that slashing after withdrawal initiation doesn't affect the withdrawal amount
         // This verifies that withdrawal shares represent a fixed claim on underlying assets
-
-        _initializeEpochSystem();
 
         // Alice deposits
         uint256 depositAmount = 5000e18;
