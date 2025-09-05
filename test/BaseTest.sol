@@ -106,9 +106,9 @@ abstract contract BaseTest is Test {
         _transferOwnershipToGovernance();
         _testOwnershipTransfer();
 
-        /*******************************************/
-        /*** Do Sppark Governance configuration  ***/
-        /*******************************************/
+        /******************************************************************************************/
+        /*** Do Spark Governance configuration                                                  ***/
+        /******************************************************************************************/
 
         // --- Step 1: Do configurations as network, DO NOT SET middleware, max network limit, and resolver
 
