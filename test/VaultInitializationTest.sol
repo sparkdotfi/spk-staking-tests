@@ -34,11 +34,11 @@ contract VaultInitializationTest is BaseTest {
         bytes32 isDepositLimitSetRole   = keccak256("IS_DEPOSIT_LIMIT_SET_ROLE");
         bytes32 depositLimitSetRole     = keccak256("DEPOSIT_LIMIT_SET_ROLE");
 
-        assertTrue(stSpk.hasRole(defaultAdminRole,        OWNER_MULTISIG), "Missing DEFAULT_ADMIN_ROLE");
-        assertTrue(stSpk.hasRole(depositWhitelistSetRole, OWNER_MULTISIG), "Missing DEPOSIT_WHITELIST_SET_ROLE");
-        assertTrue(stSpk.hasRole(depositorWhitelistRole,  OWNER_MULTISIG), "Missing DEPOSITOR_WHITELIST_ROLE");
-        assertTrue(stSpk.hasRole(isDepositLimitSetRole,   OWNER_MULTISIG), "Missing IS_DEPOSIT_LIMIT_SET_ROLE");
-        assertTrue(stSpk.hasRole(depositLimitSetRole,     OWNER_MULTISIG), "Missing DEPOSIT_LIMIT_SET_ROLE");
+        assertTrue(stSpk.hasRole(defaultAdminRole,        SPARK_GOVERNANCE), "Missing DEFAULT_ADMIN_ROLE");
+        assertTrue(stSpk.hasRole(depositWhitelistSetRole, SPARK_GOVERNANCE), "Missing DEPOSIT_WHITELIST_SET_ROLE");
+        assertTrue(stSpk.hasRole(depositorWhitelistRole,  SPARK_GOVERNANCE), "Missing DEPOSITOR_WHITELIST_ROLE");
+        assertTrue(stSpk.hasRole(isDepositLimitSetRole,   SPARK_GOVERNANCE), "Missing IS_DEPOSIT_LIMIT_SET_ROLE");
+        assertTrue(stSpk.hasRole(depositLimitSetRole,     SPARK_GOVERNANCE), "Missing DEPOSIT_LIMIT_SET_ROLE");
     }
 
     function test_DelegatorAndSlasherAlreadySet() public view {
@@ -139,14 +139,16 @@ contract VaultInitializationTest is BaseTest {
         bytes32 setNetworkLimitRole          = keccak256("NETWORK_LIMIT_SET_ROLE");
         bytes32 setOperatorNetworkSharesRole = keccak256("OPERATOR_NETWORK_SHARES_SET_ROLE");
 
-        assertTrue(networkDelegator.hasRole(defaultAdminRole,             OWNER_MULTISIG), "Missing DEFAULT_ADMIN_ROLE");
-        assertTrue(networkDelegator.hasRole(setNetworkLimitRole,          OWNER_MULTISIG), "Missing NETWORK_LIMIT_SET_ROLE");
-        assertTrue(networkDelegator.hasRole(setOperatorNetworkSharesRole, OWNER_MULTISIG), "Missing OPERATOR_NETWORK_SHARES_SET_ROLE");
+        assertTrue(networkDelegator.hasRole(defaultAdminRole,             SPARK_GOVERNANCE), "Missing DEFAULT_ADMIN_ROLE");
+        assertTrue(networkDelegator.hasRole(setNetworkLimitRole,          SPARK_GOVERNANCE), "Missing NETWORK_LIMIT_SET_ROLE");
+        assertTrue(networkDelegator.hasRole(setOperatorNetworkSharesRole, SPARK_GOVERNANCE), "Missing OPERATOR_NETWORK_SHARES_SET_ROLE");
     }
 
 }
 
 contract EventsTest is BaseTest {
+
+    address constant OWNER_MULTISIG = SPARK_CONTROLLED_MULTISIG;
 
     // Deployment of BURNER_ROUTER: 22698025 (2025-06-13)
     // Deployment of delegator, vault, slasher: 22698266 (2025-06-13)
@@ -178,7 +180,6 @@ contract NetworkDelegatorDeploymentEventsTest is EventsTest {
     bytes32 private constant SET_NETWORK_LIMIT_SIG     = keccak256("SetNetworkLimit(bytes32,uint256)");
     bytes32 private constant SET_OPERATOR_SHARES_SIG   = keccak256("SetOperatorNetworkShares(bytes32,address,uint256)");
 
-    bytes32 private constant DEFAULT_ADMIN_ROLE               = 0x00;
     bytes32 private constant HOOK_SET_ROLE                    = keccak256("HOOK_SET_ROLE");
     bytes32 private constant NETWORK_LIMIT_SET_ROLE           = keccak256("NETWORK_LIMIT_SET_ROLE");
     bytes32 private constant OPERATOR_NETWORK_SHARES_SET_ROLE = keccak256("OPERATOR_NETWORK_SHARES_SET_ROLE");
@@ -266,7 +267,6 @@ contract StakedSPKVaultDeploymentEventsTest is EventsTest {
     bytes32 private constant UPGRADED_SIG              = keccak256("Upgraded(address)");
     bytes32 private constant WITHDRAW_SIG              = keccak256("Withdraw(address,address,uint256,uint256,uint256)");
 
-    bytes32 private constant DEFAULT_ADMIN_ROLE         = 0x00;
     bytes32 private constant DEPOSIT_LIMIT_SET_ROLE     = keccak256("DEPOSIT_LIMIT_SET_ROLE");
     bytes32 private constant DEPOSIT_WHITELIST_SET_ROLE = keccak256("DEPOSIT_WHITELIST_SET_ROLE");
     bytes32 private constant DEPOSITOR_WHITELIST_ROLE   = keccak256("DEPOSITOR_WHITELIST_ROLE");
