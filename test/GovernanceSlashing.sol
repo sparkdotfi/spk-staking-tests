@@ -7,7 +7,7 @@ interface INetworkDelegator is IAccessControl {}
 
 contract GovernanceSlashingTest is BaseTest {
 
-    function test_slashingIsDisabled() public {
+    function test_slashingIsDisabledUnlessMiddlewareIsSet() public {
         // --- Step 1: Deposit 10m SPK to stSPK as two users
 
         deal(address(spk), alice, 6_000_000e18);
@@ -31,17 +31,42 @@ contract GovernanceSlashingTest is BaseTest {
 
         uint48 captureTimestamp = uint48(block.timestamp - 1 seconds);  // Can't capture current timestamp and above
 
-        // Demonstrate that the slashable stake is 100k SPK at the deposit and capture timestamps, and 0 before deposit
+        // Demonstrate that the slashable stake increases with new deposits
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp - 1, ""), 0);
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp,     ""), 2_000_000e18);
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp,     ""), 2_000_000e18);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp,     ""), ACTIVE_STAKE + 10_000_000e18);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp,     ""), ACTIVE_STAKE + 10_000_000e18);
+
+        // There is no middleware, so slashing is impossible
+        assertEq(middlewareService.middleware(NETWORK), address(0));
 
         vm.prank(NETWORK);
         vm.expectRevert("NotNetworkMiddleware()");
         slasher.requestSlash(subnetwork, OPERATOR, 10_000_000e18, captureTimestamp, "");
+
+        address middleware = makeAddr("middleware");
+
+        // Show how it would work if middleware was set
+        vm.prank(NETWORK);
+        middlewareService.setMiddleware(middleware);
+
+        // Its now possible
+        assertEq(middlewareService.middleware(NETWORK), middleware);
+
+        vm.prank(middleware);
+        uint256 slashIndex = slasher.requestSlash(subnetwork, OPERATOR, 10_000_000e18, captureTimestamp, "");
+
+        skip(3 days + 1);
+
+        vm.prank(middleware);
+        slasher.executeSlash(slashIndex, "");
     }
 
-    function skip_test_hyperlaneCanSlashUpToNetworkLimit() public {
+    function test_governanceCanSlashUpToActiveStake_withMiddlewareConfigured() public {
+        // Show how it would work if middleware was set
+        vm.prank(NETWORK);
+        middlewareService.setMiddleware(NETWORK);
+
+        uint256 SPK_BALANCE = spk.balanceOf(address(stSpk));
 
         // --- Step 1: Deposit 10m SPK to stSPK as two users
 
@@ -66,33 +91,39 @@ contract GovernanceSlashingTest is BaseTest {
 
         uint48 captureTimestamp = uint48(block.timestamp - 1 seconds);  // Can't capture current timestamp and above
 
-        // Demonstrate that the slashable stake is 100k SPK at the deposit and capture timestamps, and 0 before deposit
+        uint256 slashAmount    = 100_000_000_000e18;  // Slash above active stake to show that only staked funds can be slashed
+        uint256 slashableStake = ACTIVE_STAKE + 10_000_000e18;  // Includes new deposits
+
+        // Demonstrate that the slashable stake increases with new deposits (these are the first deposits made after new config setup)
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp - 1, ""), 0);
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp,     ""), 2_000_000e18);
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp,     ""), 2_000_000e18);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp,     ""), slashableStake);  // Entire stake is slashable
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp,     ""), slashableStake);
 
         vm.prank(NETWORK);
-        uint256 slashIndex = slasher.requestSlash(subnetwork, OPERATOR, 10_000_000e18, captureTimestamp, "");
+        uint256 slashIndex = slasher.requestSlash(subnetwork, OPERATOR, slashAmount, captureTimestamp, "");
 
         assertEq(slasher.slashRequestsLength(), 1);
 
         ( ,, uint256 amount,,, bool completed ) = slasher.slashRequests(slashIndex);
 
-        assertEq(amount,    2_000_000e18);  // Can't request to slash more than the network limit (requested full 10m)
+        assertEq(amount,    slashableStake);  // Can't request to slash more than the active stake
         assertEq(completed, false);
 
         // --- Step 3: Fast-forward past veto window and execute the slash
 
         skip(3 days + 1);
 
+        // Overwrite totalStake because of epochs possibly changing from warp
+        TOTAL_STAKE = stSpk.totalStake();
+
         assertEq(stSpk.activeBalanceOf(alice), 6_000_000e18);
         assertEq(stSpk.activeBalanceOf(bob),   4_000_000e18);
-        assertEq(stSpk.totalStake(),           TOTAL_STAKE + 10_000_000e18);
+        assertEq(stSpk.totalStake(),           TOTAL_STAKE);  // 10m captured in above query
 
-        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 2_000_000e18);
+        assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), slashableStake);
 
-        assertEq(spk.balanceOf(address(stSpk)), TOTAL_STAKE + 10_000_000e18);
-        assertEq(spk.balanceOf(BURNER_ROUTER), 0);
+        assertEq(spk.balanceOf(address(stSpk)), SPK_BALANCE + 10_000_000e18);
+        assertEq(spk.balanceOf(BURNER_ROUTER),  0);
 
         assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), 0);
         assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR),               0);
@@ -105,28 +136,32 @@ contract GovernanceSlashingTest is BaseTest {
         assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 0);
 
         // Show that active stake is reduced proportionally with withdrawals
-        assertEq(stSpk.activeStake(), ACTIVE_STAKE + 10_000_000e18 - 2_000_000e18 * stSpk.activeStake() / stSpk.totalStake());
+        assertApproxEqAbs(
+            stSpk.activeStake(),
+            slashableStake - slashableStake * stSpk.activeStake() / stSpk.totalStake(),
+            10
+        );
 
         // Show that active balance is reduced proportionally with withdrawals
         assertEq(stSpk.activeBalanceOf(alice), 6_000_000e18 * stSpk.activeStake() / stSpk.activeShares());
         assertEq(stSpk.activeBalanceOf(bob),   4_000_000e18 * stSpk.activeStake() / stSpk.activeShares());
 
-        assertEq(stSpk.activeBalanceOf(alice), 5_758_950.300616223287308507e18);
-        assertEq(stSpk.activeBalanceOf(bob),   3_839_300.200410815524872338e18);
+        assertEq(stSpk.activeBalanceOf(alice), 529_471.960385890527024221e18);
+        assertEq(stSpk.activeBalanceOf(bob),   352_981.306923927018016147e18);
 
-        assertEq(stSpk.totalStake(), TOTAL_STAKE + 10_000_000e18 - 2_000_000e18);
+        assertEq(stSpk.totalStake(), TOTAL_STAKE - slashableStake);
 
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 0);
 
-        assertEq(spk.balanceOf(address(stSpk)), TOTAL_STAKE + 10_000_000e18 - 2_000_000e18);
-        assertEq(spk.balanceOf(BURNER_ROUTER),  2_000_000e18);
+        assertEq(spk.balanceOf(address(stSpk)), SPK_BALANCE + 10_000_000e18 - slashableStake);
+        assertEq(spk.balanceOf(BURNER_ROUTER),  slashableStake);
 
         assertEq(slasher.latestSlashedCaptureTimestamp(subnetwork, OPERATOR), captureTimestamp);
-        assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR),               2_000_000e18);
+        assertEq(slasher.cumulativeSlash(subnetwork, OPERATOR),               slashableStake);
 
         ( ,, amount,,, completed ) = slasher.slashRequests(slashIndex);
 
-        assertEq(amount,    2_000_000e18);
+        assertEq(amount,    slashableStake);
         assertEq(completed, true);
 
         uint256 governanceBalance = spk.balanceOf(SPARK_GOVERNANCE);
@@ -137,7 +172,7 @@ contract GovernanceSlashingTest is BaseTest {
         IBurnerRouter(BURNER_ROUTER).triggerTransfer(SPARK_GOVERNANCE);
 
         assertEq(spk.balanceOf(BURNER_ROUTER),    0);
-        assertEq(spk.balanceOf(SPARK_GOVERNANCE), governanceBalance + 2_000_000e18);
+        assertEq(spk.balanceOf(SPARK_GOVERNANCE), governanceBalance + slashableStake);
 
         // --- Step 5: Show that slasher cannot slash anymore with the same request
 
@@ -167,7 +202,10 @@ contract GovernanceSlashingTest is BaseTest {
         slasher.requestSlash(subnetwork, OPERATOR, 100e18, uint48(block.timestamp - 1), "");  // Use the same capture timestamp
     }
 
-    function skip_test_ownerMultisigCanVetoSlash() public {
+    function test_ownerMultisigCanVetoSlash_withMiddlewareConfigured() public {
+        // Show how it would work if middleware was set
+        vm.prank(NETWORK);
+        middlewareService.setMiddleware(NETWORK);
 
         // --- Step 1: Deposit 10m SPK to stSPK as two users
 
@@ -197,7 +235,7 @@ contract GovernanceSlashingTest is BaseTest {
 
         ( ,, uint256 amount,,, bool completed ) = slasher.slashRequests(slashIndex);
 
-        assertEq(amount,    2_000_000e18);  // Can't request to slash more than the network limit (requested full 10m)
+        assertEq(amount,    10_000_000e18);  // Can't request to slash more than the network limit (requested full 10m)
         assertEq(completed, false);
 
         // --- Step 3: Owner multisig vetos the slash request
@@ -209,7 +247,7 @@ contract GovernanceSlashingTest is BaseTest {
 
         ( ,, amount,,, completed ) = slasher.slashRequests(slashIndex);
 
-        assertEq(amount,    2_000_000e18);
+        assertEq(amount,    10_000_000e18);
         assertEq(completed, true);  // Prevents execution of the slash
 
         // --- Step 4: Attempt to execute the slashing after veto (should fail)
