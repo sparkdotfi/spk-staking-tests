@@ -7,6 +7,8 @@ interface INetworkDelegator is IAccessControl {}
 
 contract GovernanceSlashingTest is BaseTest {
 
+    address MIDDLEWARE = makeAddr("middleware");
+
     function test_slashingIsDisabledUnlessMiddlewareIsSet() public {
         // --- Step 1: Deposit 10m SPK to stSPK as two users
 
@@ -43,28 +45,26 @@ contract GovernanceSlashingTest is BaseTest {
         vm.expectRevert("NotNetworkMiddleware()");
         slasher.requestSlash(subnetwork, OPERATOR, 10_000_000e18, captureTimestamp, "");
 
-        address middleware = makeAddr("middleware");
-
         // Show how it would work if middleware was set
         vm.prank(NETWORK);
-        middlewareService.setMiddleware(middleware);
+        middlewareService.setMiddleware(MIDDLEWARE);
 
         // Its now possible
-        assertEq(middlewareService.middleware(NETWORK), middleware);
+        assertEq(middlewareService.middleware(NETWORK), MIDDLEWARE);
 
-        vm.prank(middleware);
+        vm.prank(MIDDLEWARE);
         uint256 slashIndex = slasher.requestSlash(subnetwork, OPERATOR, 10_000_000e18, captureTimestamp, "");
 
         skip(3 days + 1);
 
-        vm.prank(middleware);
+        vm.prank(MIDDLEWARE);
         slasher.executeSlash(slashIndex, "");
     }
 
     function test_governanceCanSlashUpToActiveStake_withMiddlewareConfigured() public {
         // Show how it would work if middleware was set
         vm.prank(NETWORK);
-        middlewareService.setMiddleware(NETWORK);
+        middlewareService.setMiddleware(MIDDLEWARE);
 
         uint256 SPK_BALANCE = spk.balanceOf(address(stSpk));
 
@@ -99,7 +99,7 @@ contract GovernanceSlashingTest is BaseTest {
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, depositTimestamp,     ""), slashableStake);  // Entire stake is slashable
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp,     ""), slashableStake);
 
-        vm.prank(NETWORK);
+        vm.prank(MIDDLEWARE);
         uint256 slashIndex = slasher.requestSlash(subnetwork, OPERATOR, slashAmount, captureTimestamp, "");
 
         assertEq(slasher.slashRequestsLength(), 1);
@@ -130,7 +130,7 @@ contract GovernanceSlashingTest is BaseTest {
 
         assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 1e18);
 
-        vm.prank(NETWORK);
+        vm.prank(MIDDLEWARE);
         slasher.executeSlash(slashIndex, "");
 
         assertEq(delegator.operatorNetworkShares(subnetwork, OPERATOR), 0);
@@ -177,7 +177,7 @@ contract GovernanceSlashingTest is BaseTest {
         // --- Step 5: Show that slasher cannot slash anymore with the same request
 
         // Can't execute the same slash again
-        vm.prank(NETWORK);
+        vm.prank(MIDDLEWARE);
         vm.expectRevert("InsufficientSlash()");
         slasher.executeSlash(slashIndex, "");
 
@@ -186,7 +186,7 @@ contract GovernanceSlashingTest is BaseTest {
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, captureTimestamp, ""), 0);
 
         // Try to slash from the same capture timestamp that was already slashed
-        vm.prank(NETWORK);
+        vm.prank(MIDDLEWARE);
         vm.expectRevert("InsufficientSlash()");
         slashIndex = slasher.requestSlash(subnetwork, OPERATOR, 100e18, captureTimestamp, "");  // Use the same capture timestamp
 
@@ -197,7 +197,7 @@ contract GovernanceSlashingTest is BaseTest {
         assertEq(slasher.slashableStake(subnetwork, OPERATOR, uint48(block.timestamp - 1), ""), 0);
 
         // Try to slash from a new capture timestamp that is long after the last slash was completed
-        vm.prank(NETWORK);
+        vm.prank(MIDDLEWARE);
         vm.expectRevert("InsufficientSlash()");
         slasher.requestSlash(subnetwork, OPERATOR, 100e18, uint48(block.timestamp - 1), "");  // Use the same capture timestamp
     }
@@ -205,7 +205,7 @@ contract GovernanceSlashingTest is BaseTest {
     function test_ownerMultisigCanVetoSlash_withMiddlewareConfigured() public {
         // Show how it would work if middleware was set
         vm.prank(NETWORK);
-        middlewareService.setMiddleware(NETWORK);
+        middlewareService.setMiddleware(MIDDLEWARE);
 
         // --- Step 1: Deposit 10m SPK to stSPK as two users
 
@@ -228,7 +228,7 @@ contract GovernanceSlashingTest is BaseTest {
 
         uint48 captureTimestamp = uint48(block.timestamp - 1 hours);
 
-        vm.prank(NETWORK);
+        vm.prank(MIDDLEWARE);
         uint256 slashIndex = slasher.requestSlash(subnetwork, OPERATOR, 10_000_000e18, captureTimestamp, "");
 
         assertEq(slasher.slashRequestsLength(), 1);
@@ -254,7 +254,7 @@ contract GovernanceSlashingTest is BaseTest {
 
         skip(1 seconds);  // Fast-forward to the next block to pass the check to show relevant error
 
-        vm.prank(NETWORK);
+        vm.prank(MIDDLEWARE);
         vm.expectRevert("SlashRequestCompleted()");
         slasher.executeSlash(slashIndex, "");
     }
