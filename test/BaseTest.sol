@@ -66,6 +66,7 @@ abstract contract BaseTest is Test {
     // Constants based on forked state
     uint256 ACTIVE_STAKE;
     uint256 TOTAL_STAKE;
+    uint256 SPK_BALANCE;
 
     // Test users
     address alice    = makeAddr("alice");
@@ -92,10 +93,11 @@ abstract contract BaseTest is Test {
     /**********************************************************************************************/
 
     function setUp() public virtual {
-        vm.createSelectFork(getChain("mainnet").rpcUrl, 23219480);  // August 25, 2025
+        vm.createSelectFork(getChain("mainnet").rpcUrl, 23390000);  // Sept 18, 2025
 
         ACTIVE_STAKE = stSpk.activeStake();
         TOTAL_STAKE  = stSpk.totalStake();
+        SPK_BALANCE  = spk.balanceOf(address(stSpk));
 
         middlewareService = INetworkMiddlewareService(slasher.NETWORK_MIDDLEWARE_SERVICE());
 
@@ -114,14 +116,14 @@ abstract contract BaseTest is Test {
 
         vm.startPrank(NETWORK);
         networkRegistry.registerNetwork();
-        delegator.setMaxNetworkLimit(0, 2_000_000e18);
+        delegator.setMaxNetworkLimit(0, type(uint256).max);
         slasher.setResolver(0, OWNER, "");
         vm.stopPrank();
 
         // --- Step 2: Configure the network and operator to take control of 2m SPK stake as the vault owner
 
         vm.startPrank(OWNER);
-        delegator.setNetworkLimit(subnetwork, 2_000_000e18);
+        delegator.setNetworkLimit(subnetwork, type(uint256).max);
         delegator.setOperatorNetworkShares(
             subnetwork,
             OPERATOR,
@@ -141,9 +143,13 @@ abstract contract BaseTest is Test {
         IOptInService(delegator.OPERATOR_VAULT_OPT_IN_SERVICE()).optIn(address(stSpk));
         vm.stopPrank();
 
-        // --- Step 4: Check that points requirements are met
+        // --- Step 4: Assert state and check that points requirements are met
 
-        assertEq(delegator.stake(subnetwork, OPERATOR), 2_000_000e18);
+        assertEq(ACTIVE_STAKE, 285_332_367.865665229378240234e18);
+        assertEq(TOTAL_STAKE,  330_427_794.295338751923090149e18);
+        assertEq(SPK_BALANCE,  331_725_538.538237804754740626e18);
+
+        assertEq(delegator.stake(subnetwork, OPERATOR), ACTIVE_STAKE);
     }
 
     function _setupTestUsers() internal {
