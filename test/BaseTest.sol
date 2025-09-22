@@ -103,9 +103,6 @@ abstract contract BaseTest is Test {
 
         _setupTestUsers();
 
-        // _transferOwnershipToGovernance();
-        _testOwnershipTransfer();
-
         /******************************************************************************************/
         /*** Do Spark Governance configuration                                                  ***/
         /******************************************************************************************/

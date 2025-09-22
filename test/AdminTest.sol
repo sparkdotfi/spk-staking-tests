@@ -3,6 +3,14 @@ pragma solidity 0.8.25;
 
 import "./BaseTest.sol";
 
+contract OwnershipTransferTest is BaseTest {
+
+    function test_ownershipTransfer() public {
+        _testOwnershipTransfer();
+    }
+
+}
+
 contract SetIsDepositLimitFailureTests is BaseTest {
 
     function test_setIsDepositLimit_notRole() public {
